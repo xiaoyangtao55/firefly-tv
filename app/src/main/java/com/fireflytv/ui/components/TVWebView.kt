@@ -1,4 +1,4 @@
-package com.cctv_view.ui.components
+package com.fireflytv.ui.components
 
 import android.annotation.SuppressLint
 import android.net.http.SslError
@@ -16,7 +16,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
-import com.cctv_view.data.Channel
+import com.fireflytv.data.Channel
 
 @SuppressLint("SetJavaScriptEnabled")
 @Composable

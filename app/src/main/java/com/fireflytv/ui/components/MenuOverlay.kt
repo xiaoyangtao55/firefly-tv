@@ -1,4 +1,4 @@
-package com.cctv_view.ui.components
+package com.fireflytv.ui.components
 
 import android.view.KeyEvent
 import androidx.compose.foundation.background

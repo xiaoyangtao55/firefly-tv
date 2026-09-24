@@ -19,7 +19,7 @@
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:supportsRtl="true"
-        android:theme="@style/Theme.CCTV_View"
+        android:theme="@style/Theme.FireflyTV"
         android:usesCleartextTraffic="true">
 
         <!-- 主 Activity -->

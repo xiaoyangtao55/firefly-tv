@@ -1,4 +1,4 @@
-package com.cctv_view.ui.screens
+package com.fireflytv.ui.screens
 
 import android.content.Context
 import android.os.Bundle
@@ -16,8 +16,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.cctv_view.data.PlayerType
-import com.cctv_view.ui.theme.CCTVViewTheme
+import com.fireflytv.data.PlayerType
+import com.fireflytv.ui.theme.FireflyTVTheme
 
 class SettingsActivity : ComponentActivity() {
 
@@ -25,7 +25,7 @@ class SettingsActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         setContent {
-            CCTVViewTheme {
+            FireflyTVTheme {
                 SettingsScreen(
                     onBack = { finish() }
                 )
@@ -40,7 +40,7 @@ fun SettingsScreen(
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
-    val prefs = context.getSharedPreferences("cctv_view", Context.MODE_PRIVATE)
+    val prefs = context.getSharedPreferences("fireflytv", Context.MODE_PRIVATE)
 
     var fontSize by remember {
         mutableStateOf(prefs.getString("text_size", "22") ?: "22")
@@ -378,7 +378,7 @@ fun SettingsScreen(
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            "CCTV View TV 版 v1.1.0\n专为 Android TV 优化\n支持原生播放 + WebView 双模式",
+                            "萤火 TV v1.1.0\n专为 Android TV 优化\n支持原生播放 + WebView 双模式",
                             fontSize = 14.sp,
                             modifier = Modifier.padding(top = 4.dp)
                         )

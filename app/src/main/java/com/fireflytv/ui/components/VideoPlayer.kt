@@ -1,4 +1,4 @@
-package com.cctv_view.ui.components
+package com.fireflytv.ui.components
 
 import android.view.ViewGroup
 import androidx.compose.runtime.Composable
@@ -11,10 +11,11 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.datasource.HttpDataSource
+import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.ui.PlayerView
-import com.cctv_view.data.Channel
+import com.fireflytv.data.Channel
 
 /**
  * 原生视频播放器 - 使用 ExoPlayer 播放 m3u8 直播流
@@ -72,7 +73,11 @@ fun VideoPlayer(
             override fun onPlayerError(error: PlaybackException) {
                 val errorMsg = when (error.errorCode) {
                     PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED -> "网络连接失败，请检查网络"
-                    PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS -> "视频源不可用（HTTP ${error.httpStatusCode ?: "错误"}）"
+                    PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS -> {
+                        // PlaybackException 上没有状态码字段，HTTP 状态码挂在 cause 上
+                        val code = (error.cause as? HttpDataSource.InvalidResponseCodeException)?.responseCode
+                        if (code != null) "视频源不可用（HTTP $code）" else "视频源不可用"
+                    }
                     PlaybackException.ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED -> "不支持的视频格式"
                     PlaybackException.ERROR_CODE_DECODING_FAILED -> "视频解码失败"
                     else -> "播放错误: ${error.message ?: "未知错误"}"

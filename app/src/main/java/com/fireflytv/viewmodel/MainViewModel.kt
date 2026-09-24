@@ -1,12 +1,12 @@
-package com.cctv_view.viewmodel
+package com.fireflytv.viewmodel
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.cctv_view.data.Channel
-import com.cctv_view.data.ChannelCategory
-import com.cctv_view.data.ChannelRepository
-import com.cctv_view.data.PlayerType
+import com.fireflytv.data.Channel
+import com.fireflytv.data.ChannelCategory
+import com.fireflytv.data.ChannelRepository
+import com.fireflytv.data.PlayerType
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -46,7 +46,7 @@ data class PlayerUiState(
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = ChannelRepository(application)
-    private val prefs = application.getSharedPreferences("cctv_view", android.content.Context.MODE_PRIVATE)
+    private val prefs = application.getSharedPreferences("fireflytv", android.content.Context.MODE_PRIVATE)
     private val _uiState = MutableStateFlow(PlayerUiState())
     val uiState: StateFlow<PlayerUiState> = _uiState.asStateFlow()
 

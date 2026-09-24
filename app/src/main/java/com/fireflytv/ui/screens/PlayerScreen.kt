@@ -1,4 +1,4 @@
-package com.cctv_view.ui.screens
+package com.fireflytv.ui.screens
 
 import android.view.KeyEvent
 import androidx.compose.foundation.background
@@ -25,9 +25,9 @@ import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.cctv_view.data.PlayerType
-import com.cctv_view.ui.components.*
-import com.cctv_view.viewmodel.MainViewModel
+import com.fireflytv.data.PlayerType
+import com.fireflytv.ui.components.*
+import com.fireflytv.viewmodel.MainViewModel
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable

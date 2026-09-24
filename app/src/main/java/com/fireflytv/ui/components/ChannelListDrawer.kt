@@ -1,4 +1,4 @@
-package com.cctv_view.ui.components
+package com.fireflytv.ui.components
 
 import android.view.KeyEvent
 import androidx.compose.foundation.background
@@ -24,8 +24,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
-import com.cctv_view.data.Channel
-import com.cctv_view.data.ChannelCategory
+import com.fireflytv.data.Channel
+import com.fireflytv.data.ChannelCategory
 
 @OptIn(ExperimentalComposeUiApi::class, ExperimentalMaterial3Api::class)
 @Composable

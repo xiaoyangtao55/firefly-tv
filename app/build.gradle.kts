@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "com.cctv_view"
+    namespace = "com.fireflytv"
     compileSdk {
         version = release(36) {
             minorApiLevel = 1
@@ -12,7 +12,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.cctv_view"
+        applicationId = "com.fireflytv"
         minSdk = 23
         targetSdk = 36
         versionCode = 2

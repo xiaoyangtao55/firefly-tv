@@ -1,4 +1,4 @@
-package com.cctv_view.data
+package com.fireflytv.data
 
 data class Channel(
     val id: Int,

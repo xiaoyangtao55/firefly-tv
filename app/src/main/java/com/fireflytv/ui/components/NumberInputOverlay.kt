@@ -1,10 +1,9 @@
-package com.cctv_view.ui.components
+package com.fireflytv.ui.components
 
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -16,10 +15,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 @Composable
-fun ChannelOverlay(
-    message: String,
+fun NumberInputOverlay(
+    input: String,
     isVisible: Boolean,
-    fontSize: Int = 22,
     modifier: Modifier = Modifier
 ) {
     AnimatedVisibility(
@@ -31,21 +29,20 @@ fun ChannelOverlay(
             modifier = modifier
                 .fillMaxSize()
                 .padding(32.dp),
-            contentAlignment = Alignment.BottomStart
+            contentAlignment = Alignment.TopCenter
         ) {
-            Column(
+            Box(
                 modifier = Modifier
                     .shadow(8.dp, RoundedCornerShape(12.dp))
                     .background(Color.Black.copy(alpha = 0.85f), RoundedCornerShape(12.dp))
-                    .padding(horizontal = 24.dp, vertical = 16.dp)
+                    .padding(horizontal = 32.dp, vertical = 20.dp)
             ) {
                 Text(
-                    text = message,
+                    text = "换台：$input",
                     color = Color.White,
-                    fontSize = fontSize.sp,
-                    fontWeight = FontWeight.Medium,
-                    // 行高随字号等比放大，多行消息不会挤在一起
-                    lineHeight = (fontSize * 1.35f).sp
+                    fontSize = 36.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 4.sp
                 )
             }
         }

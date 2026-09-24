@@ -22,5 +22,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "CCTV_View"
+rootProject.name = "FireflyTV"
 include(":app")

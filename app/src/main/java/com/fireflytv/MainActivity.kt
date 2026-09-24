@@ -1,4 +1,4 @@
-package com.cctv_view
+package com.fireflytv
 
 import android.content.Intent
 import android.os.Bundle
@@ -9,10 +9,10 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
-import com.cctv_view.ui.screens.PlayerScreen
-import com.cctv_view.ui.screens.SettingsActivity
-import com.cctv_view.ui.theme.CCTVViewTheme
-import com.cctv_view.viewmodel.MainViewModel
+import com.fireflytv.ui.screens.PlayerScreen
+import com.fireflytv.ui.screens.SettingsActivity
+import com.fireflytv.ui.theme.FireflyTVTheme
+import com.fireflytv.viewmodel.MainViewModel
 
 class MainActivity : ComponentActivity() {
 
@@ -23,7 +23,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            CCTVViewTheme {
+            FireflyTVTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize()
                 ) {

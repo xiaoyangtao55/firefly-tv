@@ -1,4 +1,4 @@
-# CCTV View - Android TV 直播应用
+# 萤火 TV（FireflyTV）- Android TV 直播应用
 
 专为 Android TV 设计的央视/卫视直播观看应用，支持原生播放器和 WebView 双模式。
 
@@ -69,17 +69,17 @@
   2. 按菜单键 → **切换播放器**，改用 WebView 模式
   3. 切换其他频道测试
 
-> 想换成自己的源，目前需要改 `app/src/main/java/com/cctv_view/data/ChannelRepository.kt` 里的
+> 想换成自己的源，目前需要改 `app/src/main/java/com/fireflytv/data/ChannelRepository.kt` 里的
 > `streamUrl` 后重新编译；把源外置成配置文件还没做。
 
 ## 构建项目
 
 ```bash
-# 克隆项目
-git clone https://github.com/xiaoyangtao55/CCTV_View.git
+# 克隆项目（GitHub 仓库如果也改成 FireflyTV，把地址末尾一起换掉）
+git clone https://github.com/xiaoyangtao55/CCTV_View.git FireflyTV
 
 # 进入项目目录
-cd CCTV_View
+cd FireflyTV
 
 # 构建 Debug 版本
 ./gradlew assembleDebug
