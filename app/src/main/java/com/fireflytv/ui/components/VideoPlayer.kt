@@ -1,6 +1,7 @@
 package com.fireflytv.ui.components
 
 import android.view.ViewGroup
+import androidx.annotation.OptIn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
@@ -10,9 +11,10 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
-import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.HttpDataSource
+import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.ui.PlayerView
 import com.fireflytv.data.Channel
@@ -20,7 +22,12 @@ import com.fireflytv.data.Channel
 /**
  * 原生视频播放器 - 使用 ExoPlayer 播放 m3u8 直播流
  * 不依赖 WebView，兼容低版本 Android TV
+ *
+ * ExoPlayer / HlsMediaSource / DefaultHttpDataSource / PlayerView / HttpDataSource
+ * 都带 media3 的 @UnstableApi（@RequiresOptIn level = ERROR），必须显式 opt-in，
+ * 否则 lint 会以 UnsafeOptInUsageError 直接让构建失败。
  */
+@OptIn(UnstableApi::class)
 @Composable
 fun VideoPlayer(
     channel: Channel?,
