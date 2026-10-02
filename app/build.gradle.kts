@@ -69,6 +69,12 @@ dependencies {
     // 电视盒子多为 arm64-v8a；如需兼容 32 位旧盒子再额外引入 webx5core_armeabi_v7a。
     implementation("com.github.HeartHappy.webX5Core:webx5core_arm64_v8a:1.0.2")
 
+    // WebX5Core 内部对 tbssdk 用的是 implementation（不对外传递），
+    // 消费方若要直接使用 com.tencent.smtt.sdk.WebView / WebSettings / WebViewClient，
+    // 必须自己再声明一次 tbssdk，否则会报 Unresolved reference 'tencent'。
+    // 版本与 WebX5Core 内部保持一致（44286，见其 config.gradle）。
+    implementation("com.tencent.tbs:tbssdk:44286")
+
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 }
