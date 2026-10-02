@@ -232,15 +232,31 @@ fun PlayerScreen(
                 )
             } else {
                 // WebView 备用播放
-                TVWebView(
-                    channel = uiState.currentChannel,
-                    reloadToken = uiState.reloadToken,
-                    isForeground = uiState.isForeground,
-                    isPaused = uiState.isPaused,
-                    onPageFinished = { info -> viewModel.onPageFinished(info) },
-                    onError = { errorMsg -> viewModel.onPlaybackError(errorMsg) },
-                    modifier = Modifier.fillMaxSize()
-                )
+                // 网页播放：按设置选择 X5 内核或系统 WebView
+                if (uiState.useX5Kernel) {
+                    TVWebView(
+                        channel = uiState.currentChannel,
+                        reloadToken = uiState.reloadToken,
+                        isForeground = uiState.isForeground,
+                        isPaused = uiState.isPaused,
+                        onPageFinished = { info -> viewModel.onPageFinished(info) },
+                        onError = { errorMsg -> viewModel.onPlaybackError(errorMsg) },
+                        onKernelStatus = { isX5, version ->
+                            viewModel.onKernelStatus(isX5, version)
+                        },
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    SystemWebView(
+                        channel = uiState.currentChannel,
+                        reloadToken = uiState.reloadToken,
+                        isForeground = uiState.isForeground,
+                        isPaused = uiState.isPaused,
+                        onPageFinished = { info -> viewModel.onPageFinished(info) },
+                        onError = { errorMsg -> viewModel.onPlaybackError(errorMsg) },
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
             }
 
             // 加载中指示器

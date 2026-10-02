@@ -51,6 +51,18 @@ fun SettingsScreen(
     var showProgramInfo by remember {
         mutableStateOf(prefs.getBoolean("show_program_info", true))
     }
+    var useX5Kernel by remember {
+        mutableStateOf(prefs.getBoolean("use_x5_kernel", true))
+    }
+    // X5 内核状态。设置页与播放页不在同一个 Activity，拿不到播放页的 ViewModel，
+    // 这里直接查 QbSdk 的内核版本号：0 表示本机没有可用的 X5 内核。
+    var kernelStatus by remember {
+        val version = com.tencent.smtt.sdk.QbSdk.getTbsVersion(context)
+        mutableStateOf(
+            if (version > 0) "X5 内核版本 $version（已就绪）"
+            else "本机暂无 X5 内核，将回退系统 WebView"
+        )
+    }
     var overlayDuration by remember {
         mutableStateOf(prefs.getInt("overlay_duration", 5))
     }
@@ -149,6 +161,64 @@ fun SettingsScreen(
                                 "使用 ExoPlayer 原生播放 m3u8 直播流，不依赖 WebView，低版本系统也能用"
                             else
                                 "使用 WebView 加载网页播放，兼容更多频道但需要较新版本 WebView",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+
+            // X5 内核设置
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Text(
+                            "X5 内核",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            "X5 自带统一内核，不依赖系统 WebView，可改善老旧盒子的网页兼容性",
+                            fontSize = 14.sp,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    if (useX5Kernel) "已启用 X5 内核" else "已关闭，使用系统 WebView",
+                                    fontSize = 16.sp
+                                )
+                                Text(
+                                    kernelStatus,
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(top = 4.dp)
+                                )
+                            }
+                            Switch(
+                                checked = useX5Kernel,
+                                onCheckedChange = {
+                                    useX5Kernel = it
+                                    prefs.edit().putBoolean("use_x5_kernel", it).apply()
+                                }
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "切换后会自动重建播放页。若提示“X5 未生效”，" +
+                                "多为离线内核刚装好需重启 App（首次安装成功后会自动重启一次）。",
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -400,13 +470,17 @@ fun SettingsScreen(
                             .putBoolean("show_program_info", true)
                             .putInt("overlay_duration", 5)
                             .putInt("player_type", PlayerType.WEBVIEW.ordinal)
+                            .putBoolean("use_x5_kernel", true)
                             .putInt("last_channel_id", prefs.getInt("last_channel_id", 0))
                             .apply()
                         fontSize = "22"
                         directChannelChange = false
                         showProgramInfo = true
                         overlayDuration = 5
-                        playerType = PlayerType.EXOPLAYER
+                        // 与上面写入的 player_type 默认值（WEBVIEW）保持一致，
+                        // 否则会出现"设置里存的是网页播放、界面上却高亮原生播放器"的错位。
+                        playerType = PlayerType.WEBVIEW
+                        useX5Kernel = true
                     },
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(

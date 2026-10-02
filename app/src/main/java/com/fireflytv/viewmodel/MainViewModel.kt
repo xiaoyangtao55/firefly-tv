@@ -37,6 +37,13 @@ data class PlayerUiState(
     // 频道信息浮层的字号（sp），来自设置页的"字体大小"，默认 22
     val overlayTextSize: Int = 22,
     val playerType: PlayerType = PlayerType.WEBVIEW,
+    // 网页播放时是否使用 X5 内核；false 则用系统 WebView。
+    // 两者是不同的 WebView 类，切换时需要重建 WebView（靠 reloadToken 触发）。
+    val useX5Kernel: Boolean = true,
+    // 当前网页播放实际跑在 X5 上（由 TVWebView 的 getIsX5Core() 上报）
+    val x5Active: Boolean = false,
+    // X5 内核版本号，0 表示无 X5 内核（回退系统 WebView）
+    val tbsVersion: Int = 0,
     val errorMessage: String = "",
     val showError: Boolean = false,
     // 用上下键打开频道列表时要预选/滚动到的频道；null 表示预选当前播放的频道
@@ -94,7 +101,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             it.copy(
                 overlayDuration = overlayDuration,
                 playerType = playerType,
-                overlayTextSize = overlayTextSize
+                overlayTextSize = overlayTextSize,
+                useX5Kernel = prefs.getBoolean("use_x5_kernel", true)
             )
         }
     }
@@ -104,13 +112,50 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         const val DEFAULT_OVERLAY_TEXT_SIZE = 22
 
         /** 会影响播放界面表现的设置项 */
-        val SETTING_KEYS = setOf("overlay_duration", "player_type", "text_size")
+        val SETTING_KEYS = setOf("overlay_duration", "player_type", "text_size", "use_x5_kernel")
     }
 
     fun savePlayerType(type: PlayerType) {
         prefs.edit().putInt("player_type", type.ordinal).apply()
         _uiState.update { it.copy(playerType = type) }
     }
+
+    /**
+     * 切换 X5 / 系统 WebView。
+     * 两者是不同的 WebView 类（com.tencent.smtt.sdk.WebView vs android.webkit.WebView），
+     * 不能在同一个 View 上切换，只能靠递增 reloadToken 让播放组件销毁重建。
+     */
+    fun setUseX5Kernel(useX5: Boolean) {
+        prefs.edit().putBoolean("use_x5_kernel", useX5).apply()
+        _uiState.update {
+            it.copy(
+                useX5Kernel = useX5,
+                reloadToken = it.reloadToken + 1,
+                // 切换内核时清空上一次的状态，避免显示旧内核的信息
+                x5Active = false,
+                tbsVersion = 0
+            )
+        }
+    }
+
+    /**
+     * 播放组件上报实际内核状态。
+     * 注意：用户开了 X5 但本机内核不可用时会回退系统 WebView，
+     * 这时 x5Active=false，界面需要如实提示，而不是假装在用 X5。
+     */
+    fun onKernelStatus(isX5: Boolean, version: Int) {
+        _uiState.update { it.copy(x5Active = isX5, tbsVersion = version) }
+    }
+
+    /** 给界面显示的内核状态文案 */
+    fun kernelStatusText(): String = when {
+        uiStateValue().playerType != PlayerType.WEBVIEW -> "当前为原生播放器，未使用网页内核"
+        !uiStateValue().useX5Kernel -> "已手动关闭 X5，使用系统 WebView"
+        uiStateValue().x5Active -> "X5 内核已生效（版本 ${uiStateValue().tbsVersion}）"
+        else -> "X5 未生效，已回退系统 WebView（可尝试重启 App 让离线内核生效）"
+    }
+
+    private fun uiStateValue(): PlayerUiState = _uiState.value
 
     private fun loadLastChannel() {
         val lastChannelId = prefs.getInt("last_channel_id", 0)
