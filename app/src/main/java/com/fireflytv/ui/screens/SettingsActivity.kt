@@ -55,7 +55,7 @@ fun SettingsScreen(
         mutableStateOf(prefs.getInt("overlay_duration", 5))
     }
     var playerType by remember {
-        val typeIndex = prefs.getInt("player_type", PlayerType.EXOPLAYER.ordinal)
+        val typeIndex = prefs.getInt("player_type", PlayerType.WEBVIEW.ordinal)
         mutableStateOf(
             try {
                 PlayerType.entries[typeIndex]
@@ -399,7 +399,7 @@ fun SettingsScreen(
                             .putBoolean("direct_channel_change", false)
                             .putBoolean("show_program_info", true)
                             .putInt("overlay_duration", 5)
-                            .putInt("player_type", PlayerType.EXOPLAYER.ordinal)
+                            .putInt("player_type", PlayerType.WEBVIEW.ordinal)
                             .putInt("last_channel_id", prefs.getInt("last_channel_id", 0))
                             .apply()
                         fontSize = "22"

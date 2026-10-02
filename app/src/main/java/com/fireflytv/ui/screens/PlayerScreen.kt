@@ -56,6 +56,7 @@ fun PlayerScreen(
                 viewModel.toggleChannelList()
             },
             MenuItem(2, "播放/暂停", { Icon(Icons.Default.PlayArrow, contentDescription = null) }) {
+                viewModel.togglePlayPause()
                 viewModel.hideAllOverlays()
             },
             MenuItem(3, "切换播放器", { Icon(Icons.Default.SwapHoriz, contentDescription = null) }) {
@@ -220,6 +221,7 @@ fun PlayerScreen(
                     channel = uiState.currentChannel,
                     reloadToken = uiState.reloadToken,
                     isForeground = uiState.isForeground,
+                    isPaused = uiState.isPaused,
                     onPlaybackStateChanged = { isPlaying, message ->
                         viewModel.onPlaybackStateChanged(isPlaying, message)
                     },
@@ -234,6 +236,7 @@ fun PlayerScreen(
                     channel = uiState.currentChannel,
                     reloadToken = uiState.reloadToken,
                     isForeground = uiState.isForeground,
+                    isPaused = uiState.isPaused,
                     onPageFinished = { info -> viewModel.onPageFinished(info) },
                     onError = { errorMsg -> viewModel.onPlaybackError(errorMsg) },
                     modifier = Modifier.fillMaxSize()

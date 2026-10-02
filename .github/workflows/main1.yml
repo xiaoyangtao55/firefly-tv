@@ -5,16 +5,19 @@ on:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
+  workflow_dispatch:  # 允许手动触发
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v4
 
-    - name: set up JDK 11
+    # 注意：本机用 JDK 11 启动 Gradle，真正编译用的 JDK 由
+    # gradle/gradle-daemon-jvm.properties 的 toolchainVersion=21 +
+    # settings.gradle.kts 里的 foojay-resolver 自动下载，两者保持一致。
+    - name: set up JDK
       uses: actions/setup-java@v4
       with:
         java-version: '11'
@@ -27,9 +30,26 @@ jobs:
     - name: Build Debug APK
       run: ./gradlew assembleDebug
 
+    # 目前还没有测试源码，任务会以 NO-SOURCE 正常结束；
+    # 以后补上 src/test 就会自动生效。
+    - name: Run unit tests
+      run: ./gradlew testDebugUnitTest
+
+    # lint 结果作为参考，不阻塞构建
+    - name: Lint
+      continue-on-error: true
+      run: ./gradlew lintDebug
+
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: app-debug
         path: app/build/outputs/apk/debug/*.apk
         if-no-files-found: error   # 找不到 APK 就报错，方便排查
+
+    - name: Upload lint report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: lint-report
+        path: app/build/reports/lint-results-*.html

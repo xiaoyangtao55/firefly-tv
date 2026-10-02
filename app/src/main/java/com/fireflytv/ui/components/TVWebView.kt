@@ -24,6 +24,7 @@ fun TVWebView(
     channel: Channel?,
     reloadToken: Int,
     isForeground: Boolean,
+    isPaused: Boolean,
     onPageFinished: (String) -> Unit,
     onError: (String) -> Unit,
     modifier: Modifier = Modifier
@@ -144,10 +145,10 @@ fun TVWebView(
         }
     }
 
-    // 前后台切换。注意 WebView.onPause() 并不会停掉页面里的 <video>，
+    // 前后台切换 / 用户暂停。注意 WebView.onPause() 并不会停掉页面里的 <video>，
     // 所以要额外暂停/恢复它，否则退回桌面后网页声音还在响。
-    DisposableEffect(isForeground) {
-        if (isForeground) {
+    DisposableEffect(isForeground, isPaused) {
+        if (isForeground && !isPaused) {
             webView.onResume()
             webView.evaluateJavascript(
                 "(function(){var v=document.querySelector('video'); if(v){v.play();}})();",
@@ -161,6 +162,14 @@ fun TVWebView(
             )
         }
         onDispose { }
+    }
+
+    // 组件离开组合（例如切到原生播放器、或退出 Activity）时销毁 WebView，
+    // 否则 WebView 会持有 Context 引用导致内存泄漏。VideoPlayer 同理在 onDispose 里 release。
+    DisposableEffect(Unit) {
+        onDispose {
+            webView.destroy()
+        }
     }
 
     AndroidView(

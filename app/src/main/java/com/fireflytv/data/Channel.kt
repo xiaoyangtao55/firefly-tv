@@ -16,6 +16,6 @@ enum class ChannelCategory {
 }
 
 enum class PlayerType {
-    EXOPLAYER,  // 原生播放器（默认，不依赖WebView）
-    WEBVIEW     // WebView 网页播放（备用）
+    EXOPLAYER,  // 原生播放器（备用，不依赖WebView）
+    WEBVIEW     // WebView 网页播放（默认）
 }

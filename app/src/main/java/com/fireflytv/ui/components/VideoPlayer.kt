@@ -33,6 +33,7 @@ fun VideoPlayer(
     channel: Channel?,
     reloadToken: Int,
     isForeground: Boolean,
+    isPaused: Boolean,
     onPlaybackStateChanged: (Boolean, String) -> Unit, // (isPlaying, message)
     onError: (String) -> Unit,
     modifier: Modifier = Modifier
@@ -129,9 +130,9 @@ fun VideoPlayer(
         }
     }
 
-    // 前后台切换：回到桌面或进入设置页时暂停，避免退回后台后还在出声
-    DisposableEffect(isForeground) {
-        if (isForeground) {
+    // 前后台切换 / 用户暂停：两者任一不满足就暂停，避免退回后台或暂停时还在出声
+    DisposableEffect(isForeground, isPaused) {
+        if (isForeground && !isPaused) {
             // 直播暂停久了会落后于直播进度，回到前台时追到当前直播点，
             // 否则用户看到的是暂停那一刻的画面
             if (exoPlayer.playbackState != Player.STATE_IDLE) {

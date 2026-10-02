@@ -18,6 +18,9 @@ data class PlayerUiState(
     val currentChannel: Channel? = null,
     val isChangingChannel: Boolean = false,
     val isPlaying: Boolean = false,
+    // 用户手动暂停（菜单“播放/暂停”）。与 isForeground 不同：
+    // isForeground 是 App 前后台状态（系统驱动），isPaused 是用户主动行为。
+    val isPaused: Boolean = false,
     val showChannelList: Boolean = false,
     val showMenu: Boolean = false,
     val showNumberInput: Boolean = false,
@@ -33,7 +36,7 @@ data class PlayerUiState(
     val overlayDuration: Int = 5,
     // 频道信息浮层的字号（sp），来自设置页的"字体大小"，默认 22
     val overlayTextSize: Int = 22,
-    val playerType: PlayerType = PlayerType.EXOPLAYER,
+    val playerType: PlayerType = PlayerType.WEBVIEW,
     val errorMessage: String = "",
     val showError: Boolean = false,
     // 用上下键打开频道列表时要预选/滚动到的频道；null 表示预选当前播放的频道
@@ -75,7 +78,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun loadSettings() {
         val overlayDuration = prefs.getInt("overlay_duration", 5)
-        val playerTypeIndex = prefs.getInt("player_type", PlayerType.EXOPLAYER.ordinal)
+        val playerTypeIndex = prefs.getInt("player_type", PlayerType.WEBVIEW.ordinal)
         val playerType = try {
             PlayerType.entries[playerTypeIndex]
         } catch (e: Exception) {
@@ -132,7 +135,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 showOverlay = true,
                 showError = false,
                 errorMessage = "",
-                isPlaying = false
+                isPlaying = false,
+                // 换台即恢复播放：避免停留在“已暂停”状态却看着新频道的静止画面
+                isPaused = false
             )
         }
         saveLastChannel()
@@ -217,6 +222,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _uiState.value.currentChannel?.let { channel ->
             changeChannel(channel)
         }
+    }
+
+    /**
+     * 菜单“播放/暂停”的切换逻辑。
+     * 只切换 isPaused 标记，真正的暂停/恢复由 VideoPlayer / TVWebView 监听它去执行；
+     * 这样无论是原生播放器还是 WebView 都能统一处理，且切台（changeChannel 会重置 isPaused）
+     * 后自动恢复。
+     */
+    fun togglePlayPause() {
+        val next = !_uiState.value.isPaused
+        _uiState.update { it.copy(isPaused = next) }
+        // 给个明确提示，让用户在没有任何播放控件时也能知道当前状态
+        showTransientMessage(if (next) "⏸ 已暂停" else "▶ 继续播放")
     }
 
     fun nextChannel() {
