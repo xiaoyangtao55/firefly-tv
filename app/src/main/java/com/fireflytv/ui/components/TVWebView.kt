@@ -1,13 +1,7 @@
 package com.fireflytv.ui.components
 
 import android.annotation.SuppressLint
-import android.net.http.SslError
-import android.webkit.SslErrorHandler
-import android.webkit.WebChromeClient
-import android.webkit.WebResourceError
-import android.webkit.WebResourceRequest
-import android.webkit.WebView
-import android.webkit.WebViewClient
+import android.graphics.Bitmap
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -17,6 +11,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import com.fireflytv.data.Channel
+import com.tencent.smtt.export.external.interfaces.SslError
+import com.tencent.smtt.export.external.interfaces.SslErrorHandler
+import com.tencent.smtt.sdk.QbSdk
+import com.tencent.smtt.sdk.WebChromeClient
+import com.tencent.smtt.sdk.WebSettings
+import com.tencent.smtt.sdk.WebView
+import com.tencent.smtt.sdk.WebViewClient
 
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
@@ -40,14 +41,14 @@ fun TVWebView(
             settings.apply {
                 javaScriptEnabled = true
                 domStorageEnabled = true
+                // 关闭图片加载，电视盒子网络弱时更快出画面、少占带宽
                 loadsImagesAutomatically = false
                 blockNetworkImage = true
+                // 允许自动播放（X5 下同样需要这一项，否则 <video> 不播）
                 mediaPlaybackRequiresUserGesture = false
                 userAgentString = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
 
-                // 缓存设置 - 使用新版 API
-                cacheMode = android.webkit.WebSettings.LOAD_DEFAULT
-
+                cacheMode = WebSettings.LOAD_DEFAULT
                 javaScriptCanOpenWindowsAutomatically = true
                 setSupportZoom(false)
                 builtInZoomControls = false
@@ -56,21 +57,25 @@ fun TVWebView(
                 loadWithOverviewMode = true
             }
 
-            // 混合内容模式（Android 5.0+）
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
-                settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-            }
-
             webViewClient = object : WebViewClient() {
+                override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
+                    super.onPageStarted(view, url, favicon)
+                    // 新页面开始加载就清掉上次失败标记，避免上一台的失败态污染这一台
+                    loadFailed.value = false
+                }
+
+                // X5 的 WebViewClient 只提供旧式 onReceivedError(view, errorCode, description, failingUrl)，
+                // 没有基于 WebResourceRequest 的重载，这里用旧式签名。
                 override fun onReceivedError(
-                    view: WebView,
-                    request: WebResourceRequest,
-                    error: WebResourceError
+                    view: WebView?,
+                    errorCode: Int,
+                    description: String?,
+                    failingUrl: String?
                 ) {
                     // 只关心主文档失败：图片、广告等子资源加载不出来不影响播放
-                    if (!request.isForMainFrame) return
+                    if (failingUrl != null && failingUrl != view?.url) return
                     loadFailed.value = true
-                    onError(describeWebError(error.errorCode))
+                    onError(describeWebError(errorCode))
                 }
 
                 override fun onReceivedSslError(
@@ -81,7 +86,7 @@ fun TVWebView(
                     // 默认行为是静默取消加载，用户只会看到一片黑，这里给个明确提示
                     loadFailed.value = true
                     handler?.cancel()
-                    onError("网站证书校验失败，无法加载（系统 WebView 版本过旧时容易遇到）")
+                    onError("网站证书校验失败，无法加载（X5 内核未就绪或证书不受信）")
                 }
 
                 override fun onPageFinished(view: WebView?, url: String?) {
@@ -179,7 +184,7 @@ fun TVWebView(
     )
 }
 
-/** 把 WebView 的错误码翻译成用户能看懂的提示 */
+/** 把 WebView 的错误码翻译成用户能看懂的提示（X5 与系统 WebView 的错误码一致） */
 private fun describeWebError(code: Int): String = when (code) {
     WebViewClient.ERROR_HOST_LOOKUP -> "无法解析网站地址，请检查网络"
     WebViewClient.ERROR_CONNECT -> "连接网站失败，请检查网络"

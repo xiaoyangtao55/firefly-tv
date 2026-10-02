@@ -72,6 +72,21 @@
 > 想换成自己的源，目前需要改 `app/src/main/java/com/fireflytv/data/ChannelRepository.kt` 里的
 > `streamUrl` 后重新编译；把源外置成配置文件还没做。
 
+## 关于 WebView 内核（X5 / TBS）
+
+网页播放模式默认依赖系统 WebView，但部分低版本电视盒子（Android 6–7 的厂商 ROM）
+内核过旧，加载央视/卫视那种重 JS 播放页会白屏、卡死或证书失败。
+
+本项目接入了**腾讯 X5（TBS）内核**（`com.tencent.smtt.sdk.WebView`），它自带统一内核、
+不依赖系统 WebView，能显著改善这类设备的兼容性。`TVWebView` 已全面改为使用 X5 的
+`WebView`/`WebSettings`/`WebViewClient`，并在 `FireflyApplication` 启动时调用
+`QbSdk.initX5Environment` 预初始化内核。
+
+集成注意：
+- X5 SDK 不在 Google Maven，需把官方 `tbs_sdk.jar` 放进 `app/libs/`（详见该目录下的 `README.md`）。
+- 首次启动 X5 会从腾讯 CDN 下载内核；**离线盒子需按 TBS 离线集成指引预置本地内核**，
+  否则会回退到系统 WebView（仍可运行，但失去“不依赖系统 WebView”的优势）。
+
 ## 构建项目
 
 ```bash

@@ -63,6 +63,11 @@ dependencies {
     implementation(libs.androidx.media3.ui)
     implementation(libs.androidx.media3.exoplayer.hls)
 
+    // 腾讯 X5（TBS）内核：自带统一 WebView 内核，不依赖系统 WebView，
+    // 解决低版本电视盒子内核过旧、加载网页播放页白屏/卡死的问题。
+    // 需把官方 tbs_sdk_*.aar 放到 app/libs/ 下（不在 Google Maven，需手动下载）。
+    implementation(files("libs/tbs_sdk.jar"))
+
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 }
