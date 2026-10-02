@@ -79,13 +79,22 @@
 
 本项目接入了**腾讯 X5（TBS）内核**（`com.tencent.smtt.sdk.WebView`），它自带统一内核、
 不依赖系统 WebView，能显著改善这类设备的兼容性。`TVWebView` 已全面改为使用 X5 的
-`WebView`/`WebSettings`/`WebViewClient`，并在 `FireflyApplication` 启动时调用
-`QbSdk.initX5Environment` 预初始化内核。
+`WebView`/`WebSettings`/`WebViewClient`。
+
+X5 内核通过 **WebX5Core** 封装库引入（`com.github.HeartHappy.webX5Core`），
+它在 `FireflyApplication` 启动时调用 `X5CoreManager.initX5Core` 初始化，并按 ABI 把
+内核 apk 打包进 assets——**离线设备会自动从 assets 安装本地内核**，既不依赖系统 WebView，
+也不依赖联网从腾讯 CDN 拉取。
 
 集成注意：
-- X5 SDK 不在 Google Maven，需把官方 `tbs_sdk.jar` 放进 `app/libs/`（详见该目录下的 `README.md`）。
-- 首次启动 X5 会从腾讯 CDN 下载内核；**离线盒子需按 TBS 离线集成指引预置本地内核**，
-  否则会回退到系统 WebView（仍可运行，但失去“不依赖系统 WebView”的优势）。
+- 依赖坐标（在 `app/build.gradle.kts`）：
+  `implementation("com.github.HeartHappy.webX5Core:webx5core_arm64_v8a:1.0.2")`
+  （电视盒子多为 arm64-v8a；若要兼容 32 位旧盒子，再额外引入 `webx5core_armeabi_v7a`）。
+  该库经 JitPack 分发，已在 `settings.gradle.kts` 加入 `https://jitpack.io`。
+- **首次安装后离线内核安装成功（回调 stateCode=200）必须重启 App 才生效**：
+  `FireflyApplication` 收到 200 会用 AlarmManager 重新拉起 MainActivity 并结束当前进程，
+  用户可能看到一次自动重启，属正常现象。
+- 若某设备最终既无本地内核又无法联网，X5 会回退到系统 WebView（仍可运行，但失去优势）。
 
 ## 构建项目
 

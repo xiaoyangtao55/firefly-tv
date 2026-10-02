@@ -19,6 +19,8 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        // WebX5Core（腾讯 X5 离线内核封装库）通过 JitPack 分发
+        maven { url = uri("https://jitpack.io") }
     }
 }
 

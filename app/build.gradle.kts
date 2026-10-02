@@ -63,10 +63,11 @@ dependencies {
     implementation(libs.androidx.media3.ui)
     implementation(libs.androidx.media3.exoplayer.hls)
 
-    // 腾讯 X5（TBS）内核：自带统一 WebView 内核，不依赖系统 WebView，
-    // 解决低版本电视盒子内核过旧、加载网页播放页白屏/卡死的问题。
-    // 需把官方 tbs_sdk_*.aar 放到 app/libs/ 下（不在 Google Maven，需手动下载）。
-    implementation(files("libs/tbs_sdk.jar"))
+    // 腾讯 X5（TBS）内核封装库 WebX5Core（com.github.HeartHappy.webX5Core）。
+    // 它底层仍是官方 com.tencent.smtt.sdk，按 ABI 把内核 apk 打包进 assets，
+    // 离线设备自动从 assets 安装本地内核，不依赖系统 WebView、也不依赖线上拉取。
+    // 电视盒子多为 arm64-v8a；如需兼容 32 位旧盒子再额外引入 webx5core_armeabi_v7a。
+    implementation("com.github.HeartHappy.webX5Core:webx5core_arm64_v8a:1.0.2")
 
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
