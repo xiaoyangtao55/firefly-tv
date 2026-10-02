@@ -54,6 +54,34 @@ jobs:
         name: lint-report
         path: app/build/reports/lint-results-*.html
 
+  # Release 未签名包：app/build.gradle.kts 的 release 未配置 signingConfig，
+  # 所以 ./gradlew assembleRelease 产出的是 *-unsigned.apk，
+  # 仅用于验证 release 变体能编译通过，不能直接安装到设备上。
+  build-release:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: set up JDK
+      uses: actions/setup-java@v4
+      with:
+        java-version: '11'
+        distribution: 'temurin'
+
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+
+    - name: Build Release APK (unsigned)
+      run: ./gradlew assembleRelease
+
+    - name: Upload Release APK (unsigned)
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-release-unsigned
+        path: app/build/outputs/apk/release/*.apk
+        if-no-files-found: error
+
   # 单独验证 WebX5Core 是否能从 JitPack 拉到，避免“项目编译失败”掩盖
   # “JitPack 坐标不可达”这一真正原因。只解析该 aar 本身（transitive=false），
   # 不递归传递依赖（com.tencent.tbs:tbssdk 等）以免误报。
