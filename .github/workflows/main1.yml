@@ -53,3 +53,26 @@ jobs:
       with:
         name: lint-report
         path: app/build/reports/lint-results-*.html
+
+  # 单独验证 WebX5Core 是否能从 JitPack 拉到，避免“项目编译失败”掩盖
+  # “JitPack 坐标不可达”这一真正原因。只解析该 aar 本身（transitive=false），
+  # 不递归传递依赖（com.tencent.tbs:tbssdk 等）以免误报。
+  verify-jitpack:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Verify WebX5Core resolvable on JitPack
+      run: |
+        for i in 1 2 3; do
+          if mvn -q dependency:get \
+               -DremoteRepositories=https://jitpack.io \
+               -Dartifact=com.github.HeartHappy.webX5Core:webx5core_arm64_v8a:1.0.2 \
+               -Dpackaging=aar \
+               -Dtransitive=false; then
+            echo "JitPack artifact resolved OK"
+            exit 0
+          fi
+          echo "attempt $i failed, retrying in 20s..."
+          sleep 20
+        done
+        echo "::error::WebX5Core could NOT be resolved from JitPack"
+        exit 1
