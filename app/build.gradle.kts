@@ -41,8 +41,6 @@ android {
 
 dependencies {
     implementation(libs.androidx.core.ktx)
-    // appcompat 只用于 themes.xml 里的 AppCompat 主题
-    implementation(libs.androidx.appcompat)
     implementation(libs.androidx.activity.compose)
 
     implementation(libs.androidx.lifecycle.runtime.ktx)
