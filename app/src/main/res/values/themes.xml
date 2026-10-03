@@ -1,4 +1,14 @@
 <resources>
 
-    <style name="Theme.FireflyTV" parent="android:Theme.Material3.DayNight.NoActionBar" />
+    <!--
+      Material 3 的主题**不在 Android 平台**里：android:Theme.Material3.* 这个资源不存在，
+      AAPT 会报 "resource android:style/Theme.Material3.DayNight.NoActionBar not found"。
+      Material 3 系统主题只由 Material Components 库提供（不带 android: 前缀，需额外依赖）。
+
+      本项目 UI 全部由 Compose 的 MaterialTheme 渲染，XML 主题只影响窗口层面背景/状态栏，
+      因此这里用平台自带的 Theme.Material.NoActionBar（API 21+ 必然存在，零依赖）。
+      若日后希望窗口也真正走进 Material 3，加 com.google.android.material:material 依赖后
+      改成 parent="Theme.Material3.DayNight.NoActionBar"（注意不要加 android: 前缀）。
+    -->
+    <style name="Theme.FireflyTV" parent="android:Theme.Material.NoActionBar" />
 </resources>
