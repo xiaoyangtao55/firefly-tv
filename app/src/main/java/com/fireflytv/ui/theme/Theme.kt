@@ -2,7 +2,6 @@ package com.fireflytv.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Shapes
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
@@ -11,7 +10,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 private val DarkColorScheme = darkColorScheme(
@@ -52,18 +50,6 @@ private val LightColorScheme = lightColorScheme(
     error = Color(0xFFB00020),
     onError = Color.White,
     outline = Color(0xFFBDBDBD)
-)
-
-/**
- * Material 3 形状体系，专为 TV 大屏优化。
- * TV 上组件尺寸更大、观看距离更远，圆角需要更宽大才能被清晰感知。
- */
-private val AppShapes = Shapes(
-    extraSmall = 4.dp,    // 小标签、徽标
-    small = 8.dp,         // 小按钮
-    medium = 12.dp,       // 卡片、列表项
-    large = 16.dp,        // 大卡片、对话框
-    extraLarge = 24.dp    // 底部弹层、全屏浮层
 )
 
 /**
@@ -173,7 +159,6 @@ fun FireflyTVTheme(
     MaterialTheme(
         colorScheme = colorScheme,
         typography = AppTypography,
-        shapes = AppShapes,
         content = content
     )
 }
