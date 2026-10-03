@@ -6,6 +6,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -240,7 +241,9 @@ fun SettingsScreen(
             // 字体大小设置
             item {
                 Card(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .tvFocusHighlight(),
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surfaceVariant
                     )
@@ -366,7 +369,9 @@ fun SettingsScreen(
             // 浮层显示时长
             item {
                 Card(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .tvFocusHighlight(),
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surfaceVariant
                     )
@@ -529,7 +534,9 @@ private fun DurationStepper(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .tvFocusHighlight()
+            // 自己就是焦点目标：显式 focusable()。焦点高亮由外层"浮层显示时长"卡片
+            // 通过 tvFocusHighlight() 提供，这里不再自己画边框，避免叠出双层边框。
+            .focusable()
             .onKeyEvent { event ->
                 if (event.nativeKeyEvent.action != KeyEvent.ACTION_DOWN) return@onKeyEvent false
                 when (event.nativeKeyEvent.keyCode) {
