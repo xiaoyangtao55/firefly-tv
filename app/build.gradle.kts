@@ -1,0 +1,78 @@
+plugins {
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.compose)
+}
+
+android {
+    namespace = "com.fireflytv"
+    compileSdk {
+        version = release(36) {
+            minorApiLevel = 1
+        }
+    }
+
+    defaultConfig {
+        applicationId = "com.fireflytv"
+        minSdk = 23
+        targetSdk = 36
+        versionCode = 2
+        versionName = "1.1.0"
+    }
+
+    buildTypes {
+        // release 目前没有配置签名，assembleRelease 产出的是 *-unsigned.apk，
+        // 只适合本地验证编译，不要直接分发。
+        release {
+            isMinifyEnabled = false
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
+    }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
+    }
+    buildFeatures {
+        compose = true
+    }
+}
+
+dependencies {
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.activity.compose)
+
+    implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+
+    // Compose：版本全部由 BOM 决定，各模块不再单独写版本号
+    implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.compose.ui)
+    implementation(libs.androidx.compose.ui.graphics)
+    implementation(libs.androidx.compose.ui.tooling.preview)
+    implementation(libs.androidx.compose.foundation)
+    implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.compose.material.icons.core)
+
+    // ExoPlayer（原生播放，不依赖 WebView）
+    implementation(libs.androidx.media3.exoplayer)
+    implementation(libs.androidx.media3.ui)
+    implementation(libs.androidx.media3.exoplayer.hls)
+
+    // 腾讯 X5（TBS）内核封装库 WebX5Core（com.github.HeartHappy.webX5Core）。
+    // 它底层仍是官方 com.tencent.smtt.sdk，按 ABI 把内核 apk 打包进 assets，
+    // 离线设备自动从 assets 安装本地内核，不依赖系统 WebView、也不依赖线上拉取。
+    // 电视盒子多为 arm64-v8a；如需兼容 32 位旧盒子再额外引入 webx5core_armeabi_v7a。
+    implementation("com.github.HeartHappy.webX5Core:webx5core_arm64_v8a:1.0.2")
+
+    // WebX5Core 内部对 tbssdk 用的是 implementation（不对外传递），
+    // 消费方若要直接使用 com.tencent.smtt.sdk.WebView / WebSettings / WebViewClient，
+    // 必须自己再声明一次 tbssdk，否则会报 Unresolved reference 'tencent'。
+    // 版本与 WebX5Core 内部保持一致（44286，见其 config.gradle）。
+    implementation("com.tencent.tbs:tbssdk:44286")
+
+    debugImplementation(libs.androidx.compose.ui.tooling)
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
+}

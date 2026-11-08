@@ -1,0 +1,165 @@
+name: Android CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch: # 允许手动触发
+
+# 同一分支连续 push 时取消上一次未完成的构建，避免排队占满并发额度
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# 构建只需要读代码，缓存由 Actions 的运行时令牌处理，不需要写权限
+permissions:
+  contents: read
+
+env:
+  # 必须与 gradle/gradle-daemon-jvm.properties 的 toolchainVersion 一致，
+  # 否则 Gradle 会再去 foojay 下载一个 JDK（198MB，且依赖外网可用性）。
+  JAVA_VERSION: "21"
+
+jobs:
+  build:
+    name: Debug 构建 / 单测 / Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: 安装 JDK 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      # 比 setup-java 的 cache: gradle 更细粒度：缓存 Gradle 发行版、
+      # 依赖 jars 与构建缓存，命中后 build-release / PR 构建可直接复用。
+      # 暂锁 v4：v6 在冷缓存下会退化成 wrapper 裸下载 130MB 发行版，
+      # 实测连续两次 27s 超时失败（v4 会预置发行版），等上游修复再升级。
+      - name: 配置 Gradle 并启用缓存
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: 编译 Debug APK
+        run: ./gradlew assembleDebug --stacktrace
+
+      # 目前还没有 src/test 源码，任务会以 NO-SOURCE 正常结束；
+      # 以后补上 src/test 就会自动生效。
+      - name: 单元测试
+        run: ./gradlew testDebugUnitTest
+
+      # lint 结果作为参考，不阻塞构建
+      - name: Lint
+        continue-on-error: true
+        run: ./gradlew lintDebug
+
+      # 把 APK 与 dex 体积写进 Job Summary，方便追踪瘦身效果
+      - name: 统计 APK 体积
+        if: always()
+        run: |
+          shopt -s nullglob
+          apks=(app/build/outputs/apk/debug/*.apk)
+          if [ ${#apks[@]} -eq 0 ]; then
+            echo "未产出 APK，跳过体积统计"
+            exit 0
+          fi
+          {
+            echo "### Debug APK"
+            echo ""
+            echo "| 文件 | 大小 |"
+            echo "| --- | ---: |"
+            for f in "${apks[@]}"; do
+              echo "| $(basename "$f") | $(du -h "$f" | cut -f1) |"
+            done
+            echo ""
+            echo "### dex 明细（未压缩）"
+            echo ""
+            echo "| dex | 体积 |"
+            echo "| --- | ---: |"
+            unzip -l "${apks[0]}" \
+              | awk '/classes.*\.dex$/ {
+                  n = $4
+                  sub(/^classes/, "", n); sub(/\.dex$/, "", n)
+                  if (n == "") n = 1
+                  print n"\t"$4"\t"$1
+                }' \
+              | sort -n -k1,1 \
+              | awk -F'\t' '{printf "| %s | %.1f MB |\n", $2, $3/1048576}'
+            unzip -l "${apks[0]}" \
+              | awk '/classes.*\.dex$/ {s+=$1} END {printf "| **合计** | %.1f MB |\n", s/1048576}'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: 上传 Debug APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: app-debug
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error # 找不到 APK 就报错，方便排查
+          retention-days: 14
+
+      - name: 上传 lint 报告
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: lint-report
+          path: app/build/reports/lint-results-*.html
+          retention-days: 14
+
+  # Release 未签名包：release 未配置 signingConfig，assembleRelease 产出
+  # *-unsigned.apk，仅用于验证 release 变体能编译通过，不能直接安装分发。
+  build-release:
+    name: Release 变体编译（未签名）
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: 安装 JDK 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - name: 配置 Gradle 并启用缓存
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: 编译 Release APK（未签名）
+        run: ./gradlew assembleRelease --stacktrace
+
+      - name: 上传 Release APK（未签名）
+        uses: actions/upload-artifact@v7
+        with:
+          name: app-release-unsigned
+          path: app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+          retention-days: 14
+
+  # 单独验证 WebX5Core 是否能从 JitPack 拉到，避免「项目编译失败」掩盖
+  # 「JitPack 坐标不可达」这一真正原因。只解析该 aar 本身（transitive=false），
+  # 不递归传递依赖（com.tencent.tbs:tbssdk 等）以免误报。
+  verify-jitpack:
+    name: 校验 JitPack 依赖可达
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: 重试拉取 WebX5Core
+        run: |
+          for i in 1 2 3; do
+            if mvn -q dependency:get \
+                 -DremoteRepositories=https://jitpack.io \
+                 -Dartifact=com.github.HeartHappy.webX5Core:webx5core_arm64_v8a:1.0.2 \
+                 -Dpackaging=aar \
+                 -Dtransitive=false; then
+              echo "JitPack artifact resolved OK"
+              exit 0
+            fi
+            echo "第 $i 次失败，20 秒后重试..."
+            sleep 20
+          done
+          echo "::error::WebX5Core 无法从 JitPack 解析"
+          exit 1

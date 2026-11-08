@@ -1,0 +1,132 @@
+# 萤火 TV（FireflyTV）- Android TV 直播应用
+
+专为 Android TV 设计的央视/卫视直播观看应用，支持原生播放器和 WebView 双模式。
+
+## 功能特点
+
+- 📺 **46 个频道**：20 个央视频道 + 26 个地方卫视频道
+- 🎬 **双播放模式**：
+  - **原生播放器（ExoPlayer）**：直接播放 m3u8 直播流，不依赖 WebView，兼容低版本 Android TV
+  - **WebView 模式**：加载官方网页播放，兼容性更强（需要高版本 WebView）
+- 🎮 **完整遥控器支持**：
+  - ↑ / ↓：上下换台（或列表移动）
+  - ← / →：调出频道列表（或切换分类）
+  - 确认/OK：打开频道列表 / 选择
+  - 菜单键：功能菜单（刷新、切换播放器、设置等）
+  - 数字键 0-9：输入频道号快速换台
+  - 返回：关闭浮层 / 返回
+- 📋 **频道分类**：央视 / 地方台分类浏览
+- 💾 **记忆播放**：自动记住上次观看的频道
+- ⚙️ **丰富设置**：播放器切换、换台模式、浮层时长等
+
+## 系统要求
+
+- Android 6.0 (API 23) 及以上
+- Android TV / 电视盒子
+- 网络连接
+
+## 改动说明（v1.1.0）
+
+### 1. 新增原生播放器（解决低版本 WebView 问题）
+- 使用 ExoPlayer 直接播放 m3u8 直播流
+- 彻底摆脱 WebView 版本限制，WebView 66 也能正常使用
+- 播放更流畅，资源占用更低
+- 保留 WebView 模式作为备用，可在菜单或设置中切换
+
+### 2. 修复遥控按键逻辑
+- 统一按键处理逻辑，状态更清晰
+- 增加按键防抖，防止误触
+- 优化数字换台响应速度（3秒→2秒）
+- 错误状态下按确认键可重试
+
+### 3. 优化菜单交互
+- 菜单弹出后自动获取焦点
+- 菜单键可直接关闭菜单
+- 菜单项增加"频道列表"快捷入口
+- 增加"切换播放器"功能项
+
+### 4. 其他改进
+- 新增播放错误提示和重试机制
+- 设置页增加播放器选择和按键说明
+- 频道列表支持左右键切换分类
+- 加载超时自动提示
+
+## 使用说明
+
+### 切换播放器
+播放失败或想切换播放方式时：
+1. 按遥控器 **菜单键**
+2. 选择 **"切换播放器"**
+3. 系统会自动用新播放器重新加载当前频道
+
+也可以在 **设置 → 播放器** 中永久切换默认播放器。（当前版本默认即为 WebView 模式）
+
+### 直播源说明
+- 代码内置的 m3u8 地址是示例性质：实测 46 个地址当前**全部无法连接**（IPTV 源变动频繁，且部分只对运营商内网开放）
+- 因此 **WebView 模式（加载官方网页）是目前更可行的观看方式**，原生播放器留作备用
+- 如遇播放失败，可尝试：
+  1. 按确认键重试（原生播放器模式下会真正重建媒体源）
+  2. 按菜单键 → **切换播放器**，改用 WebView 模式
+  3. 切换其他频道测试
+
+> 想换成自己的源，目前需要改 `app/src/main/java/com/fireflytv/data/ChannelRepository.kt` 里的
+> `streamUrl` 后重新编译；把源外置成配置文件还没做。
+
+## 关于 WebView 内核（X5 / TBS）
+
+网页播放模式默认依赖系统 WebView，但部分低版本电视盒子（Android 6–7 的厂商 ROM）
+内核过旧，加载央视/卫视那种重 JS 播放页会白屏、卡死或证书失败。
+
+本项目接入了**腾讯 X5（TBS）内核**（`com.tencent.smtt.sdk.WebView`），它自带统一内核、
+不依赖系统 WebView，能显著改善这类设备的兼容性。`TVWebView` 已全面改为使用 X5 的
+`WebView`/`WebSettings`/`WebViewClient`。
+
+X5 内核通过 **WebX5Core** 封装库引入（`com.github.HeartHappy.webX5Core`），
+它在 `FireflyApplication` 启动时调用 `X5CoreManager.initX5Core` 初始化，并按 ABI 把
+内核 apk 打包进 assets——**离线设备会自动从 assets 安装本地内核**，既不依赖系统 WebView，
+也不依赖联网从腾讯 CDN 拉取。
+
+集成注意：
+- 依赖坐标（在 `app/build.gradle.kts`）：
+  `implementation("com.github.HeartHappy.webX5Core:webx5core_arm64_v8a:1.0.2")`
+  （电视盒子多为 arm64-v8a；若要兼容 32 位旧盒子，再额外引入 `webx5core_armeabi_v7a`）。
+  该库经 JitPack 分发，已在 `settings.gradle.kts` 加入 `https://jitpack.io`。
+- **首次安装后离线内核安装成功（回调 stateCode=200）必须重启 App 才生效**：
+  `FireflyApplication` 收到 200 会用 AlarmManager 重新拉起 MainActivity 并结束当前进程，
+  用户可能看到一次自动重启，属正常现象。
+- 若某设备最终既无本地内核又无法联网，X5 会回退到系统 WebView（仍可运行，但失去优势）。
+
+## 构建项目
+
+```bash
+# 克隆项目（GitHub 仓库如果也改成 FireflyTV，把地址末尾一起换掉）
+git clone https://github.com/xiaoyangtao55/CCTV_View.git FireflyTV
+
+# 进入项目目录
+cd FireflyTV
+
+# 构建 Debug 版本
+./gradlew assembleDebug
+```
+
+构建完成后，APK 文件位于：`app/build/outputs/apk/debug/app-debug.apk`
+
+## 安装到电视盒子
+
+```bash
+# 通过 adb 安装
+adb connect <电视盒子IP>:5555
+adb install app-debug.apk
+```
+
+## 技术栈
+
+- **语言**：Kotlin
+- **UI**：Jetpack Compose + Material 3
+- **架构**：MVVM (ViewModel + StateFlow)
+- **播放器**：ExoPlayer (Media3)
+- **最低支持**：Android 6.0 (API 23)
+
+## 免责声明
+
+本项目仅供学习交流使用，所有频道直播源均来自公开网络，仅供个人测试使用。请勿用于商业用途。如涉及版权问题，请联系删除。
