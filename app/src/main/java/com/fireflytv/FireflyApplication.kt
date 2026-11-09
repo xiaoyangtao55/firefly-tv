@@ -60,11 +60,12 @@ class FireflyApplication : android.app.Application() {
         val prefs = getSharedPreferences(PREFS, MODE_PRIVATE)
         if (!prefs.getBoolean(KEY_USE_X5, true)) return
 
-        // 本地内核只打包了 arm64-v8a 一份。跑在纯 x86 模拟器上必然装不上，
-        // 却仍会先把几十兆的 tbs apk 从 assets 复制到 cache，白耗一次 IO。
-        // 注意带 arm 转译的 x86 镜像 abilist 里同样有 arm64-v8a，不算误判。
-        if (!hasArm64Support()) {
-            Log.i(TAG, "ABI=${Build.SUPPORTED_ABIS.joinToString()} 不支持 arm64，跳过本地 X5 内核")
+        // 本地内核只打包了 arm64-v8a 一份。跑在非 arm64 设备上必然装不上，
+        // 而安装失败时 TBS 会在错误上报路径里调 AlarmManager.setExact ——
+        // targetSdk ≥ 31 没声明 SCHEDULE_EXACT_ALARM 就抛 SecurityException，
+        // 进程被杀，又是一次"闪退"。所以在最前面挡掉。
+        if (!shouldLoadLocalCore()) {
+            Log.i(TAG, "ABI=${Build.SUPPORTED_ABIS.joinToString()} 无法运行 arm64 内核，跳过")
             return
         }
 
@@ -107,8 +108,16 @@ class FireflyApplication : android.app.Application() {
         }
     }
 
-    private fun hasArm64Support(): Boolean =
-        Build.SUPPORTED_64_BIT_ABIS.any { it == "arm64-v8a" }
+    /**
+     * 是否应该加载打包进来的 arm64 内核。
+     *
+     * 判据用"首选 ABI"，而不是 abilist 里包含 arm64 —— 带 ARM 转译的 x86
+     * 设备（模拟器、ChromeOS）abilist 里同样有 arm64-v8a，但实际跑不了
+     * arm64 内核，装到一半失败，反而会踩到 TBS 失败上报路径里那个 setExact。
+     * 电视盒子要么原生 arm64，要么 32 位 arm，判断结果都是对的。
+     */
+    private fun shouldLoadLocalCore(): Boolean =
+        Build.SUPPORTED_ABIS.firstOrNull() == "arm64-v8a"
 
     private fun toastOnMain(message: String) {
         Handler(Looper.getMainLooper()).post {

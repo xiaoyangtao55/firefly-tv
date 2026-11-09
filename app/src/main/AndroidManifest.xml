@@ -20,6 +20,12 @@
         tools:ignore="MissingPermission" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
 
+    <!-- 应用自己不设定时闹钟，这条是给 TBS 兜底：内核安装失败时它会走
+         TbsLogReport → AlarmManager.setExact 上报错误，targetSdk ≥ 31 且
+         未声明该权限时那次调用会抛 SecurityException 并杀掉整个进程。
+         Android 13+ 该权限默认不授予，不会弹窗打扰用户，也不影响正常启动。 -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+
     <application
         android:name=".FireflyApplication"
         android:allowBackup="true"
