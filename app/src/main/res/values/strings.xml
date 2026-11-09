@@ -1,3 +1,6 @@
 <resources>
     <string name="app_name">萤火 TV</string>
+    <!-- 首次安装播放内核后的提示。不主动重启进程：targetSdk 36 上闹钟拉起会被
+         BAL 拦掉，静默退出和崩溃在观感上没区别 -->
+    <string name="x5_core_ready_toast">播放内核已安装，下次打开自动启用</string>
 </resources>

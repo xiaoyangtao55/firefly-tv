@@ -70,7 +70,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val prefsListener =
         android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
             // key 为 null 表示整个文件被 clear()（恢复默认设置）
-            if (key == null || key in SETTING_KEYS) loadSettings()
+            if (key == null || key in SETTING_KEYS) {
+                loadSettings()
+                // 设置页把 X5 从"关"改回"开"时，本进程可能从未初始化过 TBS
+                // （启动时开关是关的，Application 里直接跳过了）。
+                // 不在这里补一次，TVWebView 会 new 一个未初始化的 X5 WebView 直接抛异常。
+                // setUseX5Kernel() 里也有一份同样的补初始化，两处都需要：
+                // 那条路径是播放页内切换，这条是跨 Activity 从设置页切换。
+                if ((key == null || key == "use_x5_kernel") &&
+                    prefs.getBoolean("use_x5_kernel", true)
+                ) {
+                    (getApplication<Application>() as? FireflyApplication)?.initX5IfNeeded()
+                }
+            }
         }
 
     init {
