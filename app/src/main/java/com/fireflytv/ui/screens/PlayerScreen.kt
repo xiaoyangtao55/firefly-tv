@@ -381,7 +381,11 @@ fun PlayerScreen(
 
             // 频道信息浮层
             ChannelOverlay(
+                channel = uiState.overlayChannel,
+                // 卫视没有 EPG，这里自然是 null，HUD 会退化成只有台号台名
+                epg = uiState.overlayChannel?.let { uiState.epg[it.number] },
                 message = uiState.overlayMessage,
+                programInfo = uiState.programInfo,
                 isVisible = uiState.showOverlay && !uiState.showError,
                 fontSize = uiState.overlayTextSize,
                 modifier = Modifier

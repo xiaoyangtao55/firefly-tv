@@ -6,7 +6,9 @@ import androidx.lifecycle.viewModelScope
 import com.fireflytv.FireflyApplication
 import com.fireflytv.data.Channel
 import com.fireflytv.data.ChannelCategory
+import com.fireflytv.data.ChannelEpg
 import com.fireflytv.data.ChannelRepository
+import com.fireflytv.data.EpgRepository
 import com.fireflytv.data.PlayerType
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,8 +30,16 @@ data class PlayerUiState(
     val numberInputBuffer: String = "",
     val showOverlay: Boolean = false,
     val overlayMessage: String = "",
+    /**
+     * 非空时浮层画成完整的 HUD（台号块 / 台名 / 当前节目 / 进度条 / 接下来）。
+     * 为空则退化成一行文字 —— 「无此频道 99」「没有正在播放的频道」这类提示
+     * 没有对应的频道，只能走纯文本。
+     */
+    val overlayChannel: Channel? = null,
     val channelCategory: ChannelCategory = ChannelCategory.CCTV,
     val programInfo: String = "",
+    /** 频道号 → 当天节目单。只有央视有，卫视不在表里。 */
+    val epg: Map<Int, ChannelEpg> = emptyMap(),
     // 每次需要真正重建媒体源（换台 / 刷新 / 重试）时递增。
     // 播放器组件必须把它作为 key 的一部分，否则传入同一个 Channel 实例时
     // data class 相等会让 DisposableEffect/LaunchedEffect 不重新执行。
@@ -57,9 +67,13 @@ data class PlayerUiState(
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = ChannelRepository(application)
+    private val epgRepository = EpgRepository(application, repository.getAllChannels())
     private val prefs = application.getSharedPreferences("fireflytv", android.content.Context.MODE_PRIVATE)
     private val _uiState = MutableStateFlow(PlayerUiState())
     val uiState: StateFlow<PlayerUiState> = _uiState.asStateFlow()
+
+    /** 上一次主动补拉节目单的时间（秒）。离线时避免每开一次 HUD 就请求一次。 */
+    private var lastEpgAttemptSec = 0L
 
     private var numberInputJob: kotlinx.coroutines.Job? = null
 
@@ -89,6 +103,42 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         loadSettings()
         loadLastChannel()
         prefs.registerOnSharedPreferenceChangeListener(prefsListener)
+        // 进应用就后台拉一次节目单。这个请求不阻塞首帧：UI 先用空表跑起来，
+        // 拿到数据后再通过 StateFlow 补上。断网时静默失败，HUD 退化成只有台名。
+        refreshEpg()
+    }
+
+    /**
+     * 拉节目单。
+     *
+     * 失败时**不覆盖**已有数据 —— 接口抽风的时候，昨天那份旧节目单
+     * 也比 HUD 上突然空一块好。
+     */
+    private fun refreshEpg(force: Boolean = false) {
+        viewModelScope.launch {
+            val map = epgRepository.load(force)
+            if (map.isNotEmpty()) {
+                _uiState.update { it.copy(epg = map) }
+            }
+        }
+    }
+
+    /**
+     * 打开 HUD 时补一次数据。
+     *
+     * 主要为了两个场景：一是应用在后台放了很久、跨了零点，缓存里已经是昨天的节目单；
+     * 二是首次启动时网络还没就绪，那次请求失败了。
+     *
+     * 限频 5 分钟：离线设备上每次开 HUD 都发一次请求，除了耗电没有任何意义。
+     */
+    fun ensureEpgForOverlay(channel: Channel) {
+        if (channel.epgId.isNullOrBlank()) return
+        val nowSec = System.currentTimeMillis() / 1000
+        val epg = _uiState.value.epg[channel.number]
+        if (epg?.liveAt(nowSec) != null) return
+        if (nowSec - lastEpgAttemptSec < EPG_RETRY_INTERVAL_SEC) return
+        lastEpgAttemptSec = nowSec
+        refreshEpg(force = true)
     }
 
     override fun onCleared() {
@@ -123,6 +173,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private companion object {
         /** 与 PlayerUiState.overlayTextSize 的默认值、设置页的默认值保持一致 */
         const val DEFAULT_OVERLAY_TEXT_SIZE = 22
+
+        /** HUD 发现节目单缺失时，两次主动补拉的最小间隔 */
+        const val EPG_RETRY_INTERVAL_SEC = 5 * 60L
 
         /** 会影响播放界面表现的设置项 */
         val SETTING_KEYS = setOf("overlay_duration", "player_type", "text_size", "use_x5_kernel")
@@ -193,6 +246,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 reloadToken = it.reloadToken + 1,
                 programInfo = "",
                 overlayMessage = "${channel.name}\n加载中...",
+                overlayChannel = channel,
                 showOverlay = true,
                 showError = false,
                 errorMessage = "",
@@ -235,7 +289,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun onPlaybackStateChanged(isPlaying: Boolean, message: String) {
         if (isPlaying) {
-            val channelName = _uiState.value.currentChannel?.name ?: ""
+            val channel = _uiState.value.currentChannel
             val showProgramInfo = prefs.getBoolean("show_program_info", true)
             _uiState.update {
                 it.copy(
@@ -243,12 +297,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     isPlaying = true,
                     showError = false,
                     errorMessage = "",
-                    overlayMessage = if (showProgramInfo) channelName else "",
+                    // 播起来了就把"加载中…"这个临时文案清掉，HUD 的内容交给节目单去填
+                    overlayMessage = "",
+                    overlayChannel = channel,
                     showOverlay = showProgramInfo
                 )
             }
-            // 定时隐藏浮层
             if (showProgramInfo) {
+                channel?.let { ensureEpgForOverlay(it) }
                 scheduleOverlayHide(_uiState.value.overlayDuration * 1000L)
             }
         } else if (message.isNotEmpty()) {
@@ -256,6 +312,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 it.copy(
                     isPlaying = false,
                     overlayMessage = message,
+                    // 这里不动 overlayChannel：这个分支是播放器自己报的状态
+                    // （"缓冲中…"、"已暂停"），频道并没有变。清掉的话 HUD 会退化成
+                    // 一行光秃秃的"缓冲中…"，台号和节目单全没了，比原来更糟。
                     showOverlay = true
                 )
             }
@@ -336,11 +395,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun onPageFinished(programInfo: String) {
         val showProgramInfo = prefs.getBoolean("show_program_info", true)
-        val message = if (showProgramInfo && programInfo.isNotEmpty()) {
-            "${_uiState.value.currentChannel?.name ?: ""}\n$programInfo"
-        } else {
-            _uiState.value.currentChannel?.name ?: ""
-        }
+        val channel = _uiState.value.currentChannel
         _uiState.update {
             it.copy(
                 isChangingChannel = false,
@@ -348,12 +403,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 // 页面加载慢时 8 秒超时可能已经弹出错误页了，这里真正加载好就要把它收掉
                 showError = false,
                 errorMessage = "",
+                // 注入 JS 抠出来的节目名只对广东台那套模板有效，央视现在已经走 EPG 接口。
+                // 保留它是为了让没有接口的卫视（广东珠江、大湾区等）HUD 上还能有一行节目名。
                 programInfo = programInfo,
-                overlayMessage = message,
+                overlayMessage = "",
+                overlayChannel = channel,
                 showOverlay = showProgramInfo
             )
         }
         if (showProgramInfo) {
+            channel?.let { ensureEpgForOverlay(it) }
             scheduleOverlayHide(_uiState.value.overlayDuration * 1000L)
         }
     }
@@ -462,7 +521,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     /** 短暂提示（例如数字换台找不到频道），按设置的浮层时长自动隐藏 */
     private fun showTransientMessage(message: String) {
-        _uiState.update { it.copy(showOverlay = true, overlayMessage = message) }
+        // 这类提示不对应任何频道，必须把 overlayChannel 清掉：
+        // 留着的话 HUD 会继续画上一个频道的台号和节目单，和「无此频道 99」并排显示
+        _uiState.update {
+            it.copy(showOverlay = true, overlayMessage = message, overlayChannel = null)
+        }
         scheduleOverlayHide(_uiState.value.overlayDuration * 1000L)
     }
 
@@ -510,7 +573,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (channel != null) {
             changeChannel(channel)
         } else {
-            _uiState.update { it.copy(showOverlay = true, overlayMessage = "没有正在播放的频道") }
+            _uiState.update {
+                it.copy(
+                    showOverlay = true,
+                    overlayMessage = "没有正在播放的频道",
+                    overlayChannel = null
+                )
+            }
         }
     }
 
