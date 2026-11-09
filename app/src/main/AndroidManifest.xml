@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-feature
         android:name="android.hardware.touchscreen"
@@ -9,21 +8,35 @@
         android:name="android.software.leanback"
         android:required="false" />
 
-    <!-- 网络权限 -->
+    <!-- 网络权限：播放器（ExoPlayer / WebView）与 X5 内核共用 -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
-    <!-- X5（TBS）内核所需权限 -->
+    <!-- X5（TBS）内核相关的权限，全部来自腾讯 SDK。TBS 是 2015 年的产物，
+         清单按当年的场景设计，其中一条在今天已经完全没用：
+
+         · READ_PHONE_STATE —— 已删除。当年 TBS 用 IMEI/IMSI 生成设备指纹，
+           用来决定下发哪个版本的内核、做装机统计。Android 10 起系统禁止
+           三方应用读取 IMEI，新设备上这条权限拿不到任何东西，纯粹是遗留。
+           它属于危险权限，安装界面上会显示"读取电话状态"，与实际功能不符。
+
+         · WRITE_EXTERNAL_STORAGE —— 保留，但限制 maxSdkVersion=32。
+           当年 TBS 把内核解压到 /sdcard/tencent/tbs。本项目由 webx5core
+           把内核复制到内部 cacheDir，本来不需要它；但老盒子（Android 6~9）
+           上 TBS 仍会探测外部存储，删掉有触发重新下载/安装失败的风险，
+           所以只对新系统关闭申请。
+
+         · ACCESS_WIFI_STATE —— 保留。QbSdk.setDownloadWithoutWifi() 用它
+           判断当前是否 WiFi。我们用 assets 里的本地内核、不走网络下载，
+           但内核初始化阶段仍会读一次。普通权限，安装时不提示用户。 -->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
-    <uses-permission android:name="android.permission.READ_PHONE_STATE"
-        tools:ignore="MissingPermission" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
 
-    <!-- 应用自己不设定时闹钟，这条是给 TBS 兜底：内核安装失败时它会走
-         TbsLogReport → AlarmManager.setExact 上报错误，targetSdk ≥ 31 且
-         未声明该权限时那次调用会抛 SecurityException 并杀掉整个进程。
-         Android 13+ 该权限默认不授予，不会弹窗打扰用户，也不影响正常启动。 -->
+    <!-- SCHEDULE_EXACT_ALARM：应用自己不设定时闹钟，这条是给 TBS 兜底。
+         内核安装失败时它会走 TbsLogReport → AlarmManager.setExact 上报错误，
+         targetSdk ≥ 31 且未声明该权限时那次调用会抛 SecurityException 并
+         杀掉整个进程。Android 13+ 该权限默认不授予，不弹窗、不影响启动。 -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 
     <application
