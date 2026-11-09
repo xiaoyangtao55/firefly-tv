@@ -11,13 +11,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.fireflytv.ui.theme.TvDimens
 import com.fireflytv.ui.theme.TvSafeArea
 
 data class MenuItem(
@@ -71,7 +71,9 @@ fun MenuOverlay(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.7f))
+            // 0.55 而不是 0.7：菜单只在底部占一条，遮罩太重会把整幅画面压成灰色，
+            // 换台时用户往往还想看画面在播什么
+            .background(Color.Black.copy(alpha = 0.55f))
             .clickable(onClick = onDismiss),
         contentAlignment = Alignment.BottomCenter
     ) {
@@ -79,7 +81,6 @@ fun MenuOverlay(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = TvSafeArea.Horizontal, vertical = TvSafeArea.Vertical)
-                .shadow(8.dp)
                 .focusRequester(focusRequester)
                 .focusable()
                 .onKeyEvent { event ->
@@ -114,9 +115,11 @@ fun MenuOverlay(
                         else -> false
                     }
                 },
-            shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 8.dp
+            shape = RoundedCornerShape(TvDimens.RowRadius),
+            color = Color.Black.copy(alpha = 0.92f),
+            // tonalElevation 在 M3 里会给 surface 叠一层主色调的 tint，
+            // 0 表示不加 —— 电视上要的是纯黑面板，不是"带一点蓝的深灰"
+            tonalElevation = 0.dp
         ) {
             Row(
                 modifier = Modifier
@@ -156,13 +159,13 @@ fun MenuButton(
 ) {
     Surface(
         modifier = modifier.height(80.dp),
-        shape = RoundedCornerShape(12.dp),
-        color = if (isSelected) {
-            MaterialTheme.colorScheme.primary
-        } else {
-            MaterialTheme.colorScheme.surfaceVariant
-        },
-        tonalElevation = if (isSelected) 0.dp else 4.dp
+        shape = RoundedCornerShape(TvDimens.RowRadius),
+        // 和设置页的行用同一套语义色对调：选中 = 白底黑字，
+        // 而不是蓝底白字。蓝色在视频画面上（新闻跑马灯、体育比分条）到处都是，
+        // 反白才是唯一不会被画面吃掉的选中态。
+        color = if (isSelected) Color.White else Color.White.copy(alpha = 0.08f),
+        contentColor = if (isSelected) Color.Black else Color.White,
+        tonalElevation = 0.dp
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -177,7 +180,9 @@ fun MenuButton(
                 item.name,
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface
+                // 不写死颜色：Surface 的 contentColor 已经按选中态给了黑/白，
+                // 图标和文字跟着它走，改一处就够
+                color = LocalContentColor.current
             )
         }
     }
