@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  debug 专用 Manifest 覆盖（不会进入 release 包）。
+
+  目的：设置页在 main 里是 exported="false"，它又没有 launcher 图标，
+  所以在没有遥控器的机器上只能靠「MENU → 右×4 → OK」这一串按键才能到达。
+  调试 UI 时这太笨重。
+
+  这里把 SettingsActivity 在 debug 变体里改成 exported="true"，
+  于是可以直达：
+
+      adb shell am start -n com.fireflytv/.ui.screens.SettingsActivity
+
+  因为只在 app/src/debug/ 下，release 构建合并不到这个文件，
+  对外暴露的 Activity 仍然只有 MainActivity 一个。
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <application>
+        <activity
+            android:name=".ui.screens.SettingsActivity"
+            android:exported="true"
+            tools:replace="android:exported" />
+    </application>
+
+</manifest>
