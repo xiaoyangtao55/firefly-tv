@@ -2,6 +2,10 @@ package com.fireflytv.ui.screens
 
 import android.content.Context
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.os.Process
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -33,11 +37,15 @@ private val FONT_SIZES = listOf("18", "22", "25", "30")
 private val OVERLAY_RANGE = 2..10
 
 /**
- * 「恢复默认」二次确认的有效窗口。
+ * 破坏性操作的二次确认窗口。
  * 3 秒：短于这个值，用户看完标题变化再按第二下会来不及；
  * 长于这个值，误触后隔很久再按一次也会被当成确认，就失去防误触的意义了。
+ * 「恢复默认设置」和「重启应用」共用。
  */
-private const val RESET_CONFIRM_WINDOW_MS = 3_000L
+private const val CONFIRM_WINDOW_MS = 3_000L
+
+/** 点击重启后留给 Toast 上屏的时间，之后才结束进程 */
+private const val RESTART_EXIT_DELAY_MS = 1_200L
 
 private val KEYMAP = listOf(
     "↑ / ↓" to "上/下一个频道（或列表移动）",
@@ -56,10 +64,31 @@ class SettingsActivity : ComponentActivity() {
         setContent {
             FireflyTVTheme {
                 SettingsScreen(
-                    onBack = { finish() }
+                    onBack = { finish() },
+                    onRestart = { restartApp() }
                 )
             }
         }
+    }
+
+    /**
+     * 重启应用，让磁盘上已装好的 X5 内核在下一个进程里生效。
+     *
+     * 为什么必须真的退出：TBS 内核是进程启动时一次性加载的，同一个进程里
+     * 再调 initX5Environment 也是空操作，换内核只能换进程。
+     *
+     * 为什么退出后不会自动回来：targetSdk 36 有后台启动限制，闹钟/PendingIntent
+     * 拉起自己会被判 BAL_BLOCK（实测 START_CANCELED）。所以这里提前用文案和
+     * Toast 把"需要手动重新打开"讲清楚，而不是让用户对着桌面发愣。
+     */
+    private fun restartApp() {
+        Toast.makeText(this, "已退出，请重新打开应用", Toast.LENGTH_SHORT).show()
+        // 先退到桌面，避免进程被杀时还停在设置页
+        finishAffinity()
+        // 留一点时间让 Toast 上屏；进程一死 Toast 也就没了
+        Handler(Looper.getMainLooper()).postDelayed({
+            Process.killProcess(Process.myPid())
+        }, RESTART_EXIT_DELAY_MS)
     }
 }
 
@@ -67,7 +96,8 @@ class SettingsActivity : ComponentActivity() {
 // 顶栏去掉后，剩下的 Scaffold / Text 都是 stable API，不再需要 opt-in。
 @Composable
 fun SettingsScreen(
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onRestart: () -> Unit
 ) {
     val context = LocalContext.current
     // SharedPreferences 本身有缓存，但放在 remember 里能避免每次重组都走一遍
@@ -118,8 +148,18 @@ fun SettingsScreen(
 
     LaunchedEffect(resetPending) {
         if (resetPending) {
-            delay(RESET_CONFIRM_WINDOW_MS)
+            delay(CONFIRM_WINDOW_MS)
             resetPending = false
+        }
+    }
+
+    // 「重启应用」的二次确认，同样放在页面级：理由与上面一致。
+    var restartPending by remember { mutableStateOf(false) }
+
+    LaunchedEffect(restartPending) {
+        if (restartPending) {
+            delay(CONFIRM_WINDOW_MS)
+            restartPending = false
         }
     }
 
@@ -182,6 +222,11 @@ fun SettingsScreen(
         playerType = PlayerType.WEBVIEW
         useX5Kernel = true
     }
+
+    /**
+     * 重启的具体动作（退到桌面、结束进程）放在 Activity 里做：
+     * Composable 拿不到 finishAffinity，也不该直接杀进程。
+     */
 
     // 去掉顶栏的返回箭头之后，返回键必须显式接管。
     // targetSdk 36 起 predictive back 默认开启，返回事件不再作为普通按键下发到视图层，
@@ -314,6 +359,26 @@ fun SettingsScreen(
             item { AboutBlock() }
 
             item { Spacer(modifier = Modifier.height(16.dp)) }
+            item {
+                TvSettingRow(
+                    title = if (restartPending) "再按一次确认" else "重启应用",
+                    supporting = when {
+                        restartPending -> "应用会退出，需要重新打开"
+                        // 内核已经在磁盘上、但本次进程还没用上，重启才有意义
+                        useX5Kernel && tbsVersion > 0 -> "播放内核已就绪，重启后启用"
+                        else -> "退出并重新打开，让改动彻底生效"
+                    },
+                    danger = restartPending,
+                    onSelect = {
+                        if (restartPending) {
+                            restartPending = false
+                            onRestart()
+                        } else {
+                            restartPending = true
+                        }
+                    }
+                )
+            }
             item {
                 TvSettingRow(
                     // 两次确认：第一次只把标题改掉，不改任何数据；第二次才真的清。
