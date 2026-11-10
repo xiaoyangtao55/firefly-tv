@@ -425,7 +425,8 @@ private fun ChannelGroupRow(
  *
  * 三种状态用三条不同的视觉通道，避免「正在播」和「聚焦」被认错：
  * - 聚焦：纯白底 + 黑字，整块反白
- * - 正在播：8% 白底（比周围亮一档，但远不到"选中"）
+ * - 正在播：12% 白底（在 78% 黑底上刚好看得出来，又远不到"选中"。8% 实测太弱，
+ *   和普通卡片并排时几乎分辨不出，那种"看不出差别"的标记等于没做）
  * - 其余：78% 黑底，透出一点画面
  */
 @Composable
@@ -450,7 +451,7 @@ private fun ChannelCard(
     val contentColor = if (focused) Color.Black else Color.White
     val containerColor = when {
         focused -> Color.White
-        isPlaying -> Color.White.copy(alpha = 0.08f)
+        isPlaying -> Color.White.copy(alpha = 0.12f)
         else -> Color.Black.copy(alpha = 0.78f)
     }
 
@@ -501,9 +502,9 @@ private fun ChannelCard(
                         .height(3.dp)
                         .background(
                             if (focused) {
-                                Color.Black.copy(alpha = 0.7f)
+                                Color.Black.copy(alpha = 0.45f)
                             } else {
-                                Color.White.copy(alpha = 0.85f)
+                                Color.White.copy(alpha = 0.55f)
                             }
                         )
                 )
