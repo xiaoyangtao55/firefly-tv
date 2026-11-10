@@ -9,13 +9,13 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -35,6 +35,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.fireflytv.data.PlayerType
 import com.fireflytv.ui.components.*
 import com.fireflytv.ui.components.TvIcons
+import com.fireflytv.ui.theme.TvDimens
 import com.fireflytv.ui.theme.TvSafeArea
 import com.fireflytv.viewmodel.MainViewModel
 
@@ -331,7 +332,7 @@ fun PlayerScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.8f))
+                        .background(Color.Black.copy(alpha = 0.75f))
                         .clickable { viewModel.retryPlayback() },
                     contentAlignment = Alignment.Center
                 ) {
@@ -345,35 +346,50 @@ fun PlayerScreen(
                         Icon(
                             imageVector = Icons.Default.Warning,
                             contentDescription = null,
-                            tint = Color.Red,
-                            modifier = Modifier.size(64.dp)
+                            // 不用 Color.Red（#FF0000）：纯红在压缩过的直播画面上会溢出成
+                            // 一团模糊的橙块。error 色是柔和的粉红，小面积仍然醒目得多。
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(56.dp)
                         )
                         Text(
                             text = "播放失败",
-                            style = MaterialTheme.typography.headlineSmall,
+                            style = MaterialTheme.typography.headlineMedium,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.onBackground,
                             modifier = Modifier.padding(top = 16.dp)
                         )
                         Text(
                             text = uiState.errorMessage,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color.Gray,
-                            modifier = Modifier.padding(top = 8.dp)
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 10.dp)
                         )
-                        Button(
-                            onClick = { viewModel.retryPlayback() },
-                            modifier = Modifier.padding(top = 24.dp)
+                        // 纯展示的"按钮"，不挂 clickable：整屏 Box 已经是点击重试区，
+                        // 确认键也在 handleKeyDown 里直接重试。给它再挂一个可聚焦节点，
+                        // 只是多一处"焦点跑进错误页就回不来"的风险。
+                        Box(
+                            modifier = Modifier
+                                .padding(top = 28.dp)
+                                .background(
+                                    MaterialTheme.colorScheme.onBackground,
+                                    RoundedCornerShape(TvDimens.RowRadius)
+                                )
+                                .padding(horizontal = 40.dp, vertical = 14.dp)
                         ) {
-                            Text("重新加载")
+                            Text(
+                                text = "重新加载",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.background
+                            )
                         }
                         Text(
                             // 原来只写了"按菜单键"。Google TV / Chromecast 的遥控器没有 MENU 键，
                             // 那类设备上这行提示等于什么都没说，补一条它们能用的出路。
-                            text = "按菜单键可切换播放器，按返回键退出",
+                            text = "按确认键重试，按菜单键可切换播放器，按返回键退出",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = Color.Gray,
-                            modifier = Modifier.padding(top = 16.dp)
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 20.dp)
                         )
                     }
                 }
