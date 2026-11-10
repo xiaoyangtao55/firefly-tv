@@ -1,7 +1,6 @@
 package com.fireflytv.ui.components
 
 import android.view.KeyEvent
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -23,9 +22,12 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.fireflytv.data.Channel
 import com.fireflytv.data.ChannelCategory
+import com.fireflytv.ui.theme.TvDimens
 import com.fireflytv.ui.theme.TvSafeArea
 
 /**
@@ -96,7 +98,9 @@ fun ChannelListDrawer(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.7f))
+            // 70% → 60%。抽屉本身已经是不透明的纯黑面板，右侧画面再压到 70%
+            // 会让整屏失去"还在放东西"的参照，换台时反而不知道自己在哪个台上。
+            .background(Color.Black.copy(alpha = 0.6f))
             // 背景点击只负责「关闭」，不参与焦点。clickable 本身带 focusable 语义，
             // 这个全屏 Box 一旦成为焦点目标就会跟列表项抢焦点（尤其在列表为空时），
             // 所以显式禁掉。focusProperties 必须写在 clickable 之前才作用于它。
@@ -137,11 +141,15 @@ fun ChannelListDrawer(
                         else -> false
                     }
                 },
-            shape = RoundedCornerShape(topEnd = 16.dp, bottomEnd = 16.dp),
-            color = MaterialTheme.colorScheme.surface,
-            // 原实现是 shadow(8.dp) 铺满整条 400dp×全高的抽屉，低端 SoC 上每帧都要
-            // 画一层高斯模糊。tonalElevation 由主题色阶实现，零成本，视觉上够用。
-            tonalElevation = 8.dp
+            shape = RoundedCornerShape(
+                topEnd = TvDimens.RowRadius,
+                bottomEnd = TvDimens.RowRadius
+            ),
+            // 用 background（纯黑）而不是 surface：surface 是 #1E1E1E，
+            // 和左侧遮罩叠在一起会发灰，看起来像"半透明的灰玻璃"而不是面板。
+            // 纯黑 + 遮罩，边界靠两侧亮度差，反而更干净。
+            // tonalElevation 也一并去掉 —— M3 会给面板叠一层主色调 tint。
+            color = MaterialTheme.colorScheme.background
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
                 Text(
@@ -158,52 +166,26 @@ fun ChannelListDrawer(
                     color = MaterialTheme.colorScheme.onSurface
                 )
 
-                Row(
+                CategoryTabs(
+                    titles = listOf("央视频道", "地方频道"),
+                    selectedIndex = tabIndex,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(
                             start = TvSafeArea.Horizontal,
                             end = 16.dp,
-                            top = 8.dp,
-                            bottom = 8.dp
-                        ),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    listOf("央视频道", "地方频道").forEachIndexed { index, title ->
-                        val isSelected = tabIndex == index
-                        Button(
-                            onClick = { switchTab(index) },
-                            modifier = Modifier
-                                .weight(1f)
-                                .heightIn(min = 48.dp)
-                                // Tab 不是焦点目标：焦点始终留在频道列表里，
-                                // 左右键由上面的 onPreviewKeyEvent 负责切分类。
-                                .focusProperties { canFocus = false },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (isSelected) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    MaterialTheme.colorScheme.surfaceVariant
-                                },
-                                contentColor = if (isSelected) {
-                                    MaterialTheme.colorScheme.onPrimary
-                                } else {
-                                    MaterialTheme.colorScheme.onSurface
-                                }
-                            )
-                        ) {
-                            Text(
-                                title,
-                                style = MaterialTheme.typography.labelLarge,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                            )
-                        }
-                    }
-                }
+                            top = 8.dp
+                        )
+                )
 
                 HorizontalDivider(
                     modifier = Modifier.padding(start = TvSafeArea.Horizontal, end = 16.dp)
                 )
+
+                // 列表顶边和分隔线之间留 8dp。不留的话，滚动时被裁掉的那半行会
+                // 直接贴在下划线上，看起来像"字压在线上"；留了之后裁切边界落在
+                // 一片纯黑里，半行就是"被列表顶部截断"，不会误读成布局错位。
+                Spacer(modifier = Modifier.height(8.dp))
 
                 LazyColumn(
                     state = listState,
@@ -255,12 +237,79 @@ fun ChannelListDrawer(
 }
 
 /**
+ * 分类导航（tab）。
+ *
+ * 为什么不用设置页那套 [TvSegmented]：那是"值选择器"，用一块底色表达"当前值"。
+ * 这里是"第几页"，用下划线表达。两者混用会让抽屉里的分类看起来像被选中了两次
+ * （浅灰块 + 列表首项反白），而分段条在黑面板上只有 12% 白，实测截图里
+ * 几乎看不出边界，等于白画。
+ *
+ * 为什么仍然不可聚焦：焦点必须始终留在频道列表里。左右键由抽屉面板的
+ * onPreviewKeyEvent 在预览阶段截获后直接切 tabIndex，tab 只是状态指示器。
+ * 一旦 tab 可聚焦，从首项按上键会跳到 tab 上，就出现"焦点在 tab、左右键却在
+ * 切分类"的第二层脱节 —— 这也是重构前那套假光标的老毛病。
+ *
+ * 也不挂 clickable：clickable 自带 focusable 语义，同样会把 tab 拉进焦点树。
+ * 遥控器是唯一主路径，切分类只走左右键。
+ */
+@Composable
+private fun CategoryTabs(
+    titles: List<String>,
+    selectedIndex: Int,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(TvDimens.RowGap)
+    ) {
+        titles.forEachIndexed { index, title ->
+            val selected = index == selectedIndex
+            Column(
+                modifier = Modifier.weight(1f),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                    color = if (selected) {
+                        MaterialTheme.colorScheme.onBackground
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                    modifier = Modifier.padding(vertical = 10.dp)
+                )
+                // 3dp 白条紧跟下面的 1dp 分隔线，选中段看起来是"加粗的那一截"。
+                // 未选中段留空（透明），所以整条 tab 栏底部就是一条细灰线，
+                // 不会出现"每段都被框起来"的按钮感。
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(3.dp)
+                        .background(
+                            if (selected) {
+                                MaterialTheme.colorScheme.onBackground
+                            } else {
+                                Color.Transparent
+                            }
+                        )
+                )
+            }
+        }
+    }
+}
+
+/**
  * 频道行。
  *
  * 焦点态与「正在播放」态用两套完全不同的视觉通道，避免原来「alpha 0.5 对 alpha 0.3」
  * 那种电视上分不出来的差别：
- * - 聚焦：primary 实色底 + 3dp 白色边框 + onPrimary 文字（整块反白，10-foot 外一眼可见）
- * - 正在播放：淡 primary 底 + primary 文字 + ▶ 标记
+ * - 聚焦：onBackground 实色底（白）+ background 文字（黑），整块反白，10-foot 外一眼可见
+ * - 正在播放：8% 白底 + ▶ 标记 + 台号/台名加粗
+ *
+ * 不再用 primary 蓝做聚焦底。视频画面上蓝色到处都是（新闻跑马灯、体育比分条），
+ * 蓝底聚焦在换台场景里会被画面吃掉；反白是唯一不会被吃掉的选中态。
+ * 也因此去掉了原来的 3dp 白色描边 —— 白底上的白边肉眼不可见，纯属浪费一次绘制。
  */
 @Composable
 fun ChannelListItem(
@@ -272,15 +321,17 @@ fun ChannelListItem(
     val interactionSource = remember { MutableInteractionSource() }
     val focused by interactionSource.collectIsFocusedAsState()
 
+    // 未聚焦时不要用纯白做"正在播放"的底：整条列表里只有一项是白的，
+    // 用户会把它误认成焦点。8% 白是"比周围亮一点"，还够不上"选中"。
     val containerColor = when {
-        focused -> MaterialTheme.colorScheme.primary
-        isPlaying -> MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
+        focused -> MaterialTheme.colorScheme.onBackground
+        isPlaying -> MaterialTheme.colorScheme.onBackground.copy(alpha = 0.08f)
         else -> Color.Transparent
     }
-    val contentColor = when {
-        focused -> MaterialTheme.colorScheme.onPrimary
-        isPlaying -> MaterialTheme.colorScheme.primary
-        else -> MaterialTheme.colorScheme.onSurface
+    val contentColor = if (focused) {
+        MaterialTheme.colorScheme.background
+    } else {
+        MaterialTheme.colorScheme.onBackground
     }
 
     Surface(
@@ -288,29 +339,42 @@ fun ChannelListItem(
         modifier = modifier
             .fillMaxWidth()
             .padding(start = TvSafeArea.Horizontal, end = 16.dp, top = 3.dp, bottom = 3.dp),
-        shape = RoundedCornerShape(10.dp),
+        shape = RoundedCornerShape(TvDimens.RowRadius),
         color = containerColor,
         contentColor = contentColor,
-        border = if (focused) {
-            BorderStroke(3.dp, MaterialTheme.colorScheme.onSurface)
-        } else {
-            null
-        },
         interactionSource = interactionSource
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // 台号单独成列并右对齐：原来是 "1  CCTV-1" 和 "46  广东珠江" 拼一个字符串，
+            // 位数不同，台名整体是参差的。固定 44dp 一列后所有台名落在同一条竖线上，
+            // 扫视列表时不用逐个读数字。
             Text(
-                text = "${channel.number}  ${channel.name}",
+                text = channel.number.toString(),
+                style = MaterialTheme.typography.bodyLarge,
+                // 台号是索引不是内容，未聚焦时压暗一档，视线先落到台名上
+                color = if (focused || isPlaying) {
+                    contentColor
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
+                fontWeight = if (isPlaying) FontWeight.Bold else FontWeight.Normal,
+                textAlign = TextAlign.End,
+                modifier = Modifier.width(44.dp)
+            )
+            Spacer(Modifier.width(12.dp))
+            Text(
+                text = channel.name,
                 style = MaterialTheme.typography.bodyLarge,
                 color = contentColor,
                 fontWeight = if (isPlaying || focused) FontWeight.Bold else FontWeight.Normal,
-                maxLines = 1
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
             )
             if (isPlaying) {
                 Text(
@@ -342,23 +406,24 @@ private fun SettingsEntryRow(
     val interactionSource = remember { MutableInteractionSource() }
     val focused by interactionSource.collectIsFocusedAsState()
 
+    val contentColor = if (focused) {
+        MaterialTheme.colorScheme.background
+    } else {
+        MaterialTheme.colorScheme.onBackground
+    }
+
     Surface(
         onClick = onClick,
         modifier = modifier
             .fillMaxWidth()
             .padding(start = TvSafeArea.Horizontal, end = 16.dp, top = 3.dp, bottom = 3.dp),
-        shape = RoundedCornerShape(10.dp),
-        color = if (focused) MaterialTheme.colorScheme.primary else Color.Transparent,
-        contentColor = if (focused) {
-            MaterialTheme.colorScheme.onPrimary
+        shape = RoundedCornerShape(TvDimens.RowRadius),
+        color = if (focused) {
+            MaterialTheme.colorScheme.onBackground
         } else {
-            MaterialTheme.colorScheme.onSurface
+            Color.Transparent
         },
-        border = if (focused) {
-            BorderStroke(3.dp, MaterialTheme.colorScheme.onSurface)
-        } else {
-            null
-        },
+        contentColor = contentColor,
         interactionSource = interactionSource
     ) {
         Row(
@@ -369,14 +434,10 @@ private fun SettingsEntryRow(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                // tint 留空即取 LocalContentColor，聚焦反白时自动变黑
                 Icon(
                     imageVector = Icons.Default.Settings,
                     contentDescription = null,
-                    tint = if (focused) {
-                        MaterialTheme.colorScheme.onPrimary
-                    } else {
-                        MaterialTheme.colorScheme.onSurface
-                    },
                     modifier = Modifier.size(22.dp)
                 )
                 Spacer(modifier = Modifier.width(12.dp))
@@ -390,7 +451,7 @@ private fun SettingsEntryRow(
                 text = "播放器 / 内核 / 字号",
                 style = MaterialTheme.typography.bodyMedium,
                 color = if (focused) {
-                    MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f)
+                    contentColor.copy(alpha = 0.75f)
                 } else {
                     MaterialTheme.colorScheme.onSurfaceVariant
                 }
