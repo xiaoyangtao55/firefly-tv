@@ -49,8 +49,8 @@ private const val RESTART_EXIT_DELAY_MS = 1_200L
 
 private val KEYMAP = listOf(
     "↑ / ↓" to "上/下一个频道（或列表移动）",
-    "← / →" to "调出频道列表（或切换分类）",
-    "确认 / OK" to "打开频道列表 / 选择",
+    "← / →" to "调出选台面板；面板内左右移动",
+    "确认 / OK" to "打开选台面板 / 选择频道",
     "菜单" to "打开功能菜单",
     "数字键 0-9" to "输入频道号快速换台",
     "返回" to "关闭浮层 / 返回"
@@ -322,7 +322,7 @@ fun SettingsScreen(
                 TvSettingRow(
                     title = "直接换台模式",
                     value = if (directChannelChange) "开" else "关",
-                    supporting = if (directChannelChange) "上下键直接换台" else "上下键显示频道列表",
+                    supporting = if (directChannelChange) "上下键直接换台" else "上下键显示选台面板",
                     onLeft = { setDirectChannelChange(false) },
                     onRight = { setDirectChannelChange(true) },
                     onSelect = { setDirectChannelChange(!directChannelChange) }
