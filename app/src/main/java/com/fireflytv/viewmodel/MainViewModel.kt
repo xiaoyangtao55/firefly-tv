@@ -387,10 +387,25 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             it.copy(
                 showChannelList = true,
                 channelCategory = category,
-                // 让抽屉直接停在目标频道上：按上下键打开列表后，再按确认就能切过去，不用按两下
+                // 让面板直接停在目标频道上：按上下键打开列表后，再按确认就能切过去，不用按两下
                 pendingSelectionId = channelId
             )
         }
+        ensureEpgForPanel()
+    }
+
+    /**
+     * 打开选台面板时补一次节目单。
+     *
+     * 面板里每张卡片都要显示"这个台在播什么"，比 HUD 只显示一个台依赖更重 ——
+     * 表格为空时整屏卡片第二行都是空的，看起来像功能没做。
+     *
+     * [EpgRepository.load] 按日期缓存，同一天命中缓存直接返回、不发请求，
+     * 所以每开一次面板都调是安全的。它真正兜住的是两种情况：跨了零点
+     * （缓存还是昨天的）和首次启动那次请求失败（开机时网络还没就绪）。
+     */
+    private fun ensureEpgForPanel() {
+        refreshEpg()
     }
 
     fun onPageFinished(programInfo: String) {
@@ -427,6 +442,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 pendingSelectionId = null
             )
         }
+        if (_uiState.value.showChannelList) ensureEpgForPanel()
     }
 
     fun toggleMenu() {

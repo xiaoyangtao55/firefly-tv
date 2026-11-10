@@ -96,7 +96,7 @@ private fun Hud(
             .padding(horizontal = 24.dp, vertical = 20.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        ChannelBadge(channel.number, Modifier.size(88.dp))
+        ChannelBadge(number = channel.number, size = 88.dp)
 
         Spacer(Modifier.width(20.dp))
 
@@ -176,27 +176,9 @@ private fun Hud(
 }
 
 /**
- * 台号块。
- *
- * 台标图片没做，原因写在 [com.fireflytv.data.EpgRepository] 的注释里：央视的直播页
- * 本身不放台标（只有播放器和推荐位），真台标在图床 CDN 上但没有公开接口能批量查。
- * 3 米外看，一个 88dp 的方块里写「13」比 48dp 的迷你台标图清楚得多，而且零网络依赖。
+ * 台号块的实现已经提到 [com.fireflytv.ui.components.ChannelBadge]，
+ * 因为选台面板也要用同一块形状 —— 两处各画一遍迟早会走形。
  */
-@Composable
-private fun ChannelBadge(number: Int, modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-            .background(Color.White.copy(alpha = 0.12f), RoundedCornerShape(TvDimens.RowRadius)),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = number.toString(),
-            color = Color.White,
-            fontSize = 40.sp,
-            fontWeight = FontWeight.Medium
-        )
-    }
-}
 
 @Composable
 private fun ProgressBar(progress: Float, modifier: Modifier = Modifier) {

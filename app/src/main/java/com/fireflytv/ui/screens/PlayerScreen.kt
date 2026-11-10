@@ -325,8 +325,8 @@ fun PlayerScreen(
             }
 
             // 错误提示
-            // 抽屉/菜单打开时先让位：三者在 Box 里是叠加关系，错误页整屏铺满，
-            // 抽屉一盖上去就会把"网络连接失败…"这行字从中间切断（1080p 上大约切掉首字）。
+            // 选台面板/菜单打开时先让位：三者在 Box 里是叠加关系，错误页整屏铺满，
+            // 浮层一盖上去就会把"网络连接失败…"这行字从中间切断（1080p 上大约切掉首字）。
             // 关掉浮层后错误状态仍在，会自动重新出现。
             if (uiState.showError && !uiState.showChannelList && !uiState.showMenu) {
                 Box(
@@ -414,12 +414,15 @@ fun PlayerScreen(
                 modifier = Modifier
             )
 
-            // 频道列表
-            ChannelListDrawer(
+            // 选台面板（底部横向卡片，替代原来的左侧抽屉）
+            ChannelPanel(
                 cctvChannels = cctvChannels,
                 localChannels = localChannels,
+                // 卡片第二行要显示"这个台在播什么"，所以整张表都传进去 ——
+                // 只有央视有 EPG，卫视在这里查不到，卡片就只显示台名。
+                epg = uiState.epg,
                 currentChannelId = uiState.currentChannel?.id ?: -1,
-                // 上下键换台时打开列表，直接停在目标频道上（预选），按确认即可切过去
+                // 上下键换台时打开面板，直接停在目标频道上（预选），按确认即可切过去
                 initialSelectedChannelId = uiState.pendingSelectionId
                     ?: uiState.currentChannel?.id ?: -1,
                 selectedCategory = uiState.channelCategory,
@@ -435,7 +438,7 @@ fun PlayerScreen(
                     focusRequester.requestFocus()
                 },
                 // 设置入口。没有菜单键的遥控器（Google TV / Chromecast）只能从
-                // 频道列表进设置，否则整个功能菜单都不可达。
+                // 选台面板进设置，否则整个功能菜单都不可达。
                 onOpenSettings = {
                     viewModel.hideAllOverlays()
                     onOpenSettings()
