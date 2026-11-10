@@ -64,6 +64,8 @@ fun TVWebView(
                     super.onPageStarted(view, url, favicon)
                     // 新页面开始加载就清掉上次失败标记，避免上一台的失败态污染这一台
                     loadFailed.value = false
+                    // 趁 DOM 还没开始铺开就把导航/推荐位/图片清掉，越早注入越省
+                    view?.evaluateJavascript(WebViewScripts.TRIM_PAGE_JS, null)
                 }
 
                 // X5 的 WebViewClient 只提供旧式 onReceivedError(view, errorCode, description, failingUrl)，
@@ -111,6 +113,10 @@ fun TVWebView(
 
                     // 自动全屏
                     view?.evaluateJavascript(WebViewScripts.AUTO_FULLSCREEN_JS, null)
+
+                    // 全屏之后才挂看门狗：全屏按钮还没出来时页面还在铺，这时候
+                    // 补 play 只会和自动全屏抢
+                    view?.evaluateJavascript(WebViewScripts.PLAY_WATCHDOG_JS, null)
                 }
             }
 
@@ -136,11 +142,15 @@ fun TVWebView(
 
     // 前后台切换 / 用户暂停。注意 WebView.onPause() 并不会停掉页面里的 <video>，
     // 所以要额外暂停/恢复它，否则退回桌面后网页声音还在响。
+    // 顺序有讲究：暂停前必须先停看门狗，否则它 3 秒内就会把用户刚按的暂停顶回去；
+    // 恢复时反过来，先 play 再挂看门狗。
     DisposableEffect(isForeground, isPaused) {
         if (isForeground && !isPaused) {
             webView.onResume()
             webView.evaluateJavascript(WebViewScripts.PLAY_VIDEO_JS, null)
+            webView.evaluateJavascript(WebViewScripts.PLAY_WATCHDOG_JS, null)
         } else {
+            webView.evaluateJavascript(WebViewScripts.STOP_WATCHDOG_JS, null)
             webView.onPause()
             webView.evaluateJavascript(WebViewScripts.PAUSE_VIDEO_JS, null)
         }
@@ -151,6 +161,8 @@ fun TVWebView(
     // 否则 WebView 会持有 Context 引用导致内存泄漏。VideoPlayer 同理在 onDispose 里 release。
     DisposableEffect(Unit) {
         onDispose {
+            // 定时器不会随 destroy() 之外的路径自动消失，先显式清掉再销毁
+            webView.evaluateJavascript(WebViewScripts.STOP_WATCHDOG_JS, null)
             webView.destroy()
         }
     }

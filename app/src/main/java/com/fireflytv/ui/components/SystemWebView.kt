@@ -67,6 +67,7 @@ fun SystemWebView(
                 override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
                     super.onPageStarted(view, url, favicon)
                     loadFailed.value = false
+                    view?.evaluateJavascript(WebViewScripts.TRIM_PAGE_JS, null)
                 }
 
                 override fun onReceivedError(
@@ -106,6 +107,7 @@ fun SystemWebView(
                     }
 
                     view?.evaluateJavascript(WebViewScripts.AUTO_FULLSCREEN_JS, null)
+                    view?.evaluateJavascript(WebViewScripts.PLAY_WATCHDOG_JS, null)
                 }
             }
 
@@ -125,7 +127,10 @@ fun SystemWebView(
         if (isForeground && !isPaused) {
             webView.onResume()
             webView.evaluateJavascript(WebViewScripts.PLAY_VIDEO_JS, null)
+            webView.evaluateJavascript(WebViewScripts.PLAY_WATCHDOG_JS, null)
         } else {
+            // 先停看门狗再暂停，否则它 3 秒内就会把用户的暂停顶回去
+            webView.evaluateJavascript(WebViewScripts.STOP_WATCHDOG_JS, null)
             webView.onPause()
             webView.evaluateJavascript(WebViewScripts.PAUSE_VIDEO_JS, null)
         }
@@ -134,6 +139,7 @@ fun SystemWebView(
 
     DisposableEffect(Unit) {
         onDispose {
+            webView.evaluateJavascript(WebViewScripts.STOP_WATCHDOG_JS, null)
             webView.destroy()
         }
     }
